@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   if (!data.user) return NextResponse.redirect(new URL("/login", origin));
 
   const res = NextResponse.redirect(authUrl(lastfmCredentials().apiKey, `${origin}/api/auth/lastfm/callback`));
+  // Lax (not Strict) so the cookie is sent on the cross-site top-level redirect back from last.fm.
   res.cookies.set(CONNECT_COOKIE, data.user.id, {
     httpOnly: true,
     secure: origin.startsWith("https:"),
