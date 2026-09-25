@@ -1,4 +1,4 @@
-import { FAST_MS, matchTags, MINUTE, RateGate } from "@earshot/core";
+import { FAST_MS, matchTags, MINUTE, pickZone, RateGate } from "@earshot/core";
 import { describe, expect, it } from "vitest";
 import { type ArtistZone, type DueAccount, type EngagementWrite, type PollerStore, runPollCycle } from "./poller.ts";
 
@@ -70,7 +70,8 @@ function world(accounts: number) {
 
   const zones = [{ id: "metal", claims: matchTags(["thrash metal", "metal"]) }];
   const gate = new RateGate(4, clock.now, clock.sleep);
-  const cycle = () => runPollCycle({ apiKey: "k", store, zones, fallbackZoneId: "outskirts", gate, now: clock.now, fetch: fetchImpl });
+  const mapTags = (tags: { name: string; count: number }[]) => pickZone(tags, zones, "outskirts");
+  const cycle = () => runPollCycle({ apiKey: "k", store, mapTags, gate, now: clock.now, fetch: fetchImpl });
 
   /** Cron: a run starts every 30 s (runs finish within their 25 s budget, so they never overlap). */
   async function runFor(ms: number) {

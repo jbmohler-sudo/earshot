@@ -2,7 +2,7 @@
 // All logic lives in packages/sources (runPollCycle); this file is the Supabase-backed store.
 import { RateGate } from "@earshot/core";
 import { type PollerStore, runPollCycle } from "@earshot/sources/lastfm/poller";
-import { CLAIMING_ZONES, FALLBACK_ZONE_ID, OVERRIDES } from "@earshot/zones/registry";
+import { mapTags, OVERRIDES } from "@earshot/zones/registry";
 import { createClient } from "@supabase/supabase-js";
 
 const SOURCE = "lastfm";
@@ -112,8 +112,7 @@ Deno.serve(async (req) => {
     const stats = await runPollCycle({
       apiKey: env("LASTFM_API_KEY"),
       store: supabaseStore(),
-      zones: CLAIMING_ZONES,
-      fallbackZoneId: FALLBACK_ZONE_ID,
+      mapTags,
       overrides: OVERRIDES,
       gate: new RateGate(4),
       budgetMs: 25_000,

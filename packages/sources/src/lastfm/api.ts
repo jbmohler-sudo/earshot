@@ -5,11 +5,10 @@ const USER_AGENT = "Earshot/0.1 (+https://earshot.world)";
 
 /** Last.fm API error. Code 29 (or HTTP 429) means we are over the rate limit. */
 export class LastfmError extends Error {
-  constructor(
-    readonly code: number,
-    message: string,
-  ) {
+  readonly code: number;
+  constructor(code: number, message: string) {
     super(`Last.fm error ${code}: ${message}`);
+    this.code = code;
   }
   get rateLimited(): boolean {
     return this.code === 29 || this.code === 429;

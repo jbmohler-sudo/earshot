@@ -1,12 +1,19 @@
 /** Spaces calls so no more than `perSecond` start in any one-second window. */
 export class RateGate {
   private next = 0;
+  private readonly perSecond: number;
+  private readonly now: () => number;
+  private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(
-    private readonly perSecond: number,
-    private readonly now: () => number = () => Date.now(),
-    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
-  ) {}
+    perSecond: number,
+    now: () => number = () => Date.now(),
+    sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  ) {
+    this.perSecond = perSecond;
+    this.now = now;
+    this.sleep = sleep;
+  }
 
   /** Resolves when the caller may start its request. */
   async wait(): Promise<void> {

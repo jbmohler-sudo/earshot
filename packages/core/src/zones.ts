@@ -13,9 +13,21 @@ export interface ZoneClaimer {
 
 export interface ZonePick {
   zoneId: string;
-  /** Winning score as a share of the total weight considered, 0–1. */
+  /** Winning score as a share of the total weight considered, 0–1. 0 when the fallback was chosen. */
   confidence: number;
+  /** Each zone's score, and the share the best claiming zone would have had. */
   scores: Record<string, number>;
+  bestShare: number;
+}
+
+export interface PickOptions {
+  /** A winner below this share of the total weight goes to the fallback instead. Default 0. */
+  minConfidence?: number;
+  /**
+   * Per-tag multipliers (normalized names). Tags below 1 are "generic": they add to a zone's score
+   * but can never carry a zone on their own. 0 ignores a tag entirely, even in the total.
+   */
+  tagWeights?: Record<string, number>;
 }
 
 export function normalizeTag(tag: string): string {
@@ -29,19 +41,37 @@ export function matchTags(list: readonly string[]): (tags: string[]) => number {
 }
 
 /**
- * Score each zone as Σ weight(tag) × claims([tag]). The highest score wins; ties go to the earlier zone.
- * Scores of 0 everywhere go to the fallback zone.
+ * Score each zone as Σ count(tag) × weight(tag) × claims([tag]). The highest score wins; ties go to the
+ * earlier zone. A zone needs at least one full-weight tag to win, and its share of the total weighted
+ * count must reach minConfidence; otherwise the fallback zone takes it.
  */
-export function pickZone(tags: readonly WeightedTag[], zones: readonly ZoneClaimer[], fallbackId: string): ZonePick {
+export function pickZone(
+  tags: readonly WeightedTag[],
+  zones: readonly ZoneClaimer[],
+  fallbackId: string,
+  opts: PickOptions = {},
+): ZonePick {
+  const weights = new Map(Object.entries(opts.tagWeights ?? {}).map(([k, v]) => [normalizeTag(k), v]));
+  const weightOf = (name: string) => weights.get(normalizeTag(name)) ?? 1;
+  const considered = tags.filter((t) => t.count > 0 && weightOf(t.name) > 0);
+  const total = considered.reduce((s, t) => s + t.count * weightOf(t.name), 0);
+
   const scores: Record<string, number> = {};
   let best: { id: string; score: number } | null = null;
   for (const z of zones) {
     let score = 0;
-    for (const t of tags) if (t.count > 0 && z.claims([t.name]) > 0) score += t.count;
+    let anchored = false;
+    for (const t of considered) {
+      if (z.claims([t.name]) === 0) continue;
+      const w = weightOf(t.name);
+      score += t.count * w;
+      if (w >= 1) anchored = true;
+    }
     scores[z.id] = score;
-    if (score > 0 && (!best || score > best.score)) best = { id: z.id, score };
+    if (anchored && score > 0 && (!best || score > best.score)) best = { id: z.id, score };
   }
-  const total = tags.reduce((s, t) => s + Math.max(0, t.count), 0);
-  if (!best) return { zoneId: fallbackId, confidence: 0, scores };
-  return { zoneId: best.id, confidence: total > 0 ? Math.min(1, best.score / total) : 0, scores };
+
+  const bestShare = best && total > 0 ? Math.min(1, best.score / total) : 0;
+  if (!best || bestShare < (opts.minConfidence ?? 0)) return { zoneId: fallbackId, confidence: 0, scores, bestShare };
+  return { zoneId: best.id, confidence: bestShare, scores, bestShare };
 }

@@ -1,6 +1,6 @@
 // One poll cycle: claim due accounts, read what each is playing, map new artists to zones, reschedule.
 // Pure apart from the injected store, fetch and clock, so it runs under vitest and in the Deno Edge Function.
-import { isStale, nextPollDelay, pickZone, RateGate, type ZoneClaimer } from "@earshot/core";
+import { isStale, nextPollDelay, RateGate, type WeightedTag } from "@earshot/core";
 import { ACCOUNT_UNREADABLE_CODES, getNowPlaying, getTopTags, LastfmError, type NowPlaying } from "./api.ts";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -59,8 +59,8 @@ export interface PollerStore {
 export interface PollerOptions {
   apiKey: string;
   store: PollerStore;
-  zones: readonly ZoneClaimer[];
-  fallbackZoneId: string;
+  /** Tags → zone (the genre mapper). Owned by zones/registry.ts. */
+  mapTags: (tags: WeightedTag[]) => { zoneId: string; confidence: number };
   overrides?: Record<string, string>;
   gate: RateGate;
   now?: () => number;
@@ -129,7 +129,7 @@ export async function runPollCycle(o: PollerOptions): Promise<CycleStats> {
       log("tags-failed", { artist: np.artistKey, message: e instanceof Error ? e.message : String(e) });
       return cached; // stale cache beats nothing; null means "try again next time"
     }
-    const pick = override ? { zoneId: override, confidence: 1 } : pickZone(tags, o.zones, o.fallbackZoneId);
+    const pick = override ? { zoneId: override, confidence: 1 } : o.mapTags(tags);
     const a: ArtistZone = {
       artistKey: np.artistKey,
       artistName: np.artist,
