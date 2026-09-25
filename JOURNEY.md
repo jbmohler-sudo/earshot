@@ -5,10 +5,9 @@
 ## Current State
 
 - **Phase:** 1 (real people in the world). Gate to Phase 2: 10 friends connected and coming back on their own.
-- **Done:** Step 1 scaffold is built and committed locally: monorepo, placeholder landing page. Tests, typecheck, and `next build` pass on Windows.
-- **Blocked:** No GitHub push or deploy yet. Creating the public `earshot` repo needs Jeff's approval. The Vercel CLI account (`jbmohler-5207`, team `jeff-mohlers-projects`) can't see `earshot.world`, even though its nameservers are Vercel's.
-- **Next:** Publish repo → Vercel project (root dir `apps/web`) → attach `earshot.world` → step 2 (Supabase project, which needs Jeff's go-ahead).
-- **Biggest open question:** Which Vercel account/team actually owns `earshot.world`?
+- **Done:** Step 1. The placeholder page is live at https://earshot.world (`www` 308-redirects to the apex). Repo is https://github.com/jbmohler-sudo/earshot (public). Vercel project `earshot` is on `jeff-mohlers-projects`: root `apps/web`, Next.js, Node 24, Git-connected so pushes to `main` deploy.
+- **Next:** Step 2, Supabase project + migrations + RLS. **Check in with Jeff before creating the Supabase project.**
+- **Biggest open question:** None blocking.
 
 ## The Story So Far
 
@@ -40,16 +39,16 @@ _(nothing yet)_
 
 ## Open Questions
 
-- Which Vercel scope owns `earshot.world`? It may need to move to `jeff-mohlers-projects`.
+_(none)_
 
 ## Session Log
 
-### 2026-09-25 — Step 1 scaffold
-**Did:** Moved the brief and prototype into `docs/`. Scaffolded the pnpm monorepo per the brief's layout. Wrote a placeholder page styled from the prototype's palette. `pnpm test` (7 passing), `pnpm typecheck`, and `pnpm build` all pass. Made the first local commit.
+### 2026-09-25 — Step 1: scaffold + deploy
+**Did:** Moved the brief and prototype into `docs/`. Scaffolded the pnpm monorepo per the brief's layout. Wrote a placeholder page styled from the prototype's palette. `pnpm test` (7 passing), `pnpm typecheck`, and `pnpm build` all pass on Windows. Scanned history for secrets (clean) and widened `.gitignore` to `.env*`. Created the public GitHub repo and the Vercel project. Deployed to production and attached `earshot.world` + `www`.
 **Decided:** TS 6.0 pin, TS-source workspace packages, music-free `Engagement` fields, LF line endings.
-**Deferred:** GitHub push and Vercel deploy, pending Jeff's approval to create the public repo and the domain ownership fix.
-**State after:** Built and committed locally only; not live.
-**Next:** Publish the repo, deploy, attach the domain, then check in before creating the Supabase project.
+**Gotcha:** The Vercel MCP connector returns 403 on project create/update for this team. Use the CLI instead: `vercel link`, `vercel domains add`, and `vercel api <endpoint> -X PATCH` for settings like `rootDirectory`.
+**State after:** Placeholder live on earshot.world.
+**Next:** Check in with Jeff, then step 2 (Supabase).
 
 ## Hard Rules
 
