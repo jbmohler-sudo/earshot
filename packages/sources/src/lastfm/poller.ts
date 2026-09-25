@@ -88,6 +88,11 @@ const LEASE_SECONDS = 90;
 const RATE_LIMIT_PAUSE_MS = 15_000;
 const ERROR_RETRY_MS = 2 * 60_000;
 const UNREADABLE_RETRY_MS = 60 * 60_000;
+/**
+ * Cron ticks every 30 s but a poll finishes a moment after its tick started, so "30 s from now"
+ * would land just after the next tick and slip to 60 s. Scheduling a little early keeps the cadence.
+ */
+export const SCHEDULE_SLACK_MS = 5_000;
 
 export async function runPollCycle(o: PollerOptions): Promise<CycleStats> {
   const now = o.now ?? (() => Date.now());
@@ -219,7 +224,7 @@ export async function runPollCycle(o: PollerOptions): Promise<CycleStats> {
       await o.store.finishAccount(acct.userId, {
         lastPolledAt: iso(t),
         lastChangedAt: lastChangedAt === null ? null : iso(lastChangedAt),
-        nextPollAt: iso(t + delay),
+        nextPollAt: iso(t + delay - SCHEDULE_SLACK_MS),
         lastError: null,
       });
     }

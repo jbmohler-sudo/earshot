@@ -128,6 +128,13 @@ describe("runPollCycle", () => {
     expect(w.engagements.get("u0")!.startedAt).not.toBe(started);
   });
 
+  it("polls an active listener on every 30-second cron tick", async () => {
+    const w = world(1);
+    w.playing.set("user0", { artist: "Metallica", title: "One" });
+    const stats = await w.runFor(5 * MINUTE);
+    expect(stats.map((s) => s.polled)).toEqual(Array(10).fill(1));
+  });
+
   it("marks an engagement stale after 15 minutes with nothing playing", async () => {
     const w = world(1);
     w.playing.set("user0", { artist: "Metallica", title: "One" });
