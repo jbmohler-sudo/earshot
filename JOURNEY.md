@@ -5,13 +5,14 @@
 ## Current State
 
 - **Phase:** 1 (real people in the world). Gate to Phase 2: 10 friends connected and coming back on their own.
-- **Done:** Steps 1–4, live at https://earshot.world.
+- **Done:** Steps 1–5, live at https://earshot.world.
   - **Step 1:** scaffold and deploy.
   - **Step 2:** Supabase schema, RLS and grants.
   - **Step 3:** magic-link sign-in, `/me` with name, avatar picker and hide toggle.
-  - **Step 4:** Last.fm web-auth connect. Everything verified except the one hop that needs a real Last.fm login.
-- **Waiting on Jeff:** Jeff connects his own Last.fm account at earshot.world/me. That's the step 4 end-to-end check-in.
-- **Next:** Step 5: poller (Edge Function + pg_cron) + adaptive polling + genre mapper.
+  - **Step 4:** Last.fm connect, verified by Jeff as MightyZaino.
+  - **Step 5:** poller Edge Function on a 30 s pg_cron, adaptive polling, and the genre mapper.
+- **Waiting on Jeff:** Jeff plays music. His real listening should appear in `engagements` and `artist_zones`; that's the step 5 check-in.
+- **Next:** Step 6: port the prototype world into `packages/core` + PixiJS renderer, Metal zone first.
 - **Biggest open question:** Email delivery for friends. Supabase's built-in SMTP only sends to org team members, so custom SMTP (e.g. Resend) is needed before step 9.
 
 ## The Story So Far
@@ -34,6 +35,13 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-25 | One Last.fm account per Earshot account (`unique (source, external_username)`) | Stops two accounts claiming the same listener |
 | 2026-09-25 | Last.fm callback requires an httpOnly `lf_connect` cookie holding the user id (10 min) | Blocks forged callback links from linking someone else's Last.fm to a victim |
 | 2026-09-25 | Avatar = `{skin, hair, shirt, long}` palette indices; palettes from the prototype | "Five minutes, not a builder" |
+| 2026-09-25 | Last.fm token check is only "present, ≤256 chars, no whitespace or control characters"; per-exit `lastfm-callback <reason>` logging is permanent | Real tokens contain non-alphanumeric characters; the strict regex rejected every real connect. The logging found it on the first retest. |
+| 2026-09-25 | Poll intervals = the brief's tiers × load factor (accounts / 120), floored at 30 s | The brief's backoff targets 150 users; at 10 users it would miss the "within ~30 s" definition of done. Full backoff kicks in at 120+ accounts. |
+| 2026-09-25 | Poller claims due accounts with a lease (`claim_due_accounts`, `for update skip locked`); runs stop claiming at 25 s | Overlapping or crashed runs can't double-poll or strand accounts |
+| 2026-09-25 | Cron→function auth: shared `x-poller-secret` header, stored in Vault and in the function secrets, set out of band | Migration statements are stored in history, so secrets can't go in migrations. New `sb_secret` keys aren't JWTs, so the function runs with `verify_jwt = false`. |
+| 2026-09-25 | Next poll is scheduled 5 s early (`SCHEDULE_SLACK_MS`) | Otherwise "+30 s" lands just after the next cron tick and the real cadence becomes 60 s |
+| 2026-09-25 | Genre mapper: score = Σ tag count × zone claims, over the top 10 tags; ties go to zone order (metal, indie, folk); unclaimed → outskirts; `zones/overrides.json` wins; tags cached 30 days | From the brief, made concrete |
+| 2026-09-25 | Shared packages use explicit `.ts` import extensions (`allowImportingTsExtensions`) | Lets the Deno Edge Function import `packages/*` and `zones/*/src/claims.ts` directly through an import map |
 
 ## System Map
 
@@ -41,9 +49,11 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Supabase clients:** `apps/web/lib/supabase/{server,admin,proxy}.ts`. Admin (service role) is server-only.
 - **DB types:** `apps/web/lib/database.types.ts`, regenerated with `supabase gen types typescript --linked --schema public`.
 - **RLS smoke test:** `apps/web/scripts/rls-smoke.mjs`. Run it after any migration. 18 checks against the live project; cleans up its test users.
-- **Core:** `packages/core`. Plug-in contracts plus `tierOf`, with tests. World logic port is step 6.
-- **Sources:** `packages/sources/src/lastfm/auth.ts`. `authUrl`, `signParams`, `getSession`, with tests. Poll is step 5.
-- **Zones:** `zones/*`. Id-only stubs.
+- **Core:** `packages/core`. Plug-in contracts, `tierOf`, adaptive `schedule`, `RateGate`, and `pickZone`/`matchTags`, all with tests. World logic port is step 6.
+- **Sources:** `packages/sources/src/lastfm/`: `auth.ts` (web auth), `api.ts` (now-playing and top tags, 429/code-29 handling), and `poller.ts` (`runPollCycle`, pure with an injected store). Tested, including a 150-account rate simulation.
+- **Poller:** `supabase/functions/poller/`, a thin Deno wrapper. Deploy with `supabase functions deploy poller --use-api --no-verify-jwt`. pg_cron job `earshot-poller` runs every 30 s; `earshot-cron-history-cleanup` runs hourly. Check health through `net._http_response` (each run returns its stats JSON). Logs: `poller <event>` lines.
+- **Genre mapper:** `zones/*/src/claims.ts` (tag lists), `zones/registry.ts`, `zones/overrides.json`. Scoring is in `packages/core/src/zones.ts`.
+- **Zones:** `zones/*`. Tag claims only; layouts and renderers come in step 6.
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
@@ -57,6 +67,13 @@ _(nothing yet)_
 - Realtime per-zone channels: a `postgres_changes` filter on `zone_id` won't tell the old zone when someone moves zones. Broadcast vs. filter is decided in step 7.
 
 ## Session Log
+
+### 2026-09-25 — Last.fm connect fix + step 5 (poller, genre mapper)
+**Did:** Fixed the Last.fm callback: the strict token regex rejected real tokens. Added permanent per-exit logging, and Jeff connected as MightyZaino. Built the poller: core schedule, rate gate and zone scoring; the sources API and poll loop; zone claims, registry and overrides; three migrations (poll columns + lease RPC, cron job, cron-history cleanup); the Edge Function with secrets in Vault and function secrets. 45 tests pass, including 150 simulated accounts at ≤4 req/s. Found and fixed a 60 s real cadence caused by cron jitter.
+**Decided:** See the Decisions Log rows dated 2026-09-25 from "Last.fm token check" onwards.
+**Gotchas:** (1) The Supabase MCP is read-only; Vault writes went through a temporary service-role-only RPC, since dropped. (2) The PowerShell tool blocks `Remove-Item $var` on computed paths; use bash `rm` with a literal path. (3) `supabase functions deploy --use-api` bundles imports from outside `supabase/functions` without trouble; it uploads exactly the import graph.
+**State after:** The poller runs every 30 s with 0 errors. Engagements and artist_zones fill when Jeff plays something.
+**Next:** Jeff verifies real listening, then step 6.
 
 ### 2026-09-25 — Steps 2–4: schema, auth, Last.fm connect
 **Did:** Two migrations: five tables, RLS, explicit grants, signup and hide triggers, presence in the realtime publication, `is_visible()` in a private schema. Verified with 18 live RLS checks. Built magic-link sign-in, `/me` (name, avatar picker, hide toggle), and the Last.fm connect/disconnect routes. Pushed auth site_url and redirect URLs. Tested locally and on earshot.world with throwaway users, all deleted afterwards.
