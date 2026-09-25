@@ -1,0 +1,1120 @@
+<title>Earshot Forge Town</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chivo:wght@400;600;700&family=Chivo+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --basalt: #120d0c;
+    --ash-900: #1b1413;
+    --ash-800: #231a18;
+    --line: #342825;
+    --ash: #a39187;
+    --bone: #efe4d6;
+    --ember: #ff6a2b;
+    --lava: #ffb347;
+    --amber: #d9a441;
+    --smoke: #6d5b63;
+    --display: "Silkscreen", "Courier New", monospace;
+    --body: "Chivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Chivo Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--basalt);
+    color: var(--bone);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .app {
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+    padding-inline: 16px;
+    padding-block: 12px;
+    box-sizing: border-box;
+  }
+  header.bar {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 18px;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.06em;
+    color: var(--bone);
+  }
+  .brand span { color: var(--ember); }
+  .zone {
+    font-family: var(--display);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--lava);
+  }
+  .live {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--bone);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .live::before {
+    content: "";
+    width: 8px; height: 8px;
+    background: var(--ember);
+    box-shadow: 0 0 8px var(--ember);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .proto {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ash);
+    border: 1px solid var(--line);
+    padding: 3px 8px;
+  }
+  main.stage {
+    position: relative;
+    min-height: 0;
+    border: 1px solid var(--line);
+    background: #0b0808;
+    overflow: hidden;
+  }
+  #world {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+    image-rendering: pixelated;
+  }
+  #world.dragging { cursor: grabbing; }
+  .hint {
+    position: absolute;
+    left: 10px; bottom: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ash);
+    background: rgba(18, 13, 12, 0.8);
+    padding: 4px 8px;
+    pointer-events: none;
+  }
+  .zoom {
+    position: absolute;
+    right: 10px; bottom: 10px;
+    display: flex;
+    gap: 4px;
+  }
+  .zoom button {
+    width: 32px; height: 32px;
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--bone);
+    background: rgba(27, 20, 19, 0.92);
+    border: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .zoom button:hover { border-color: var(--ember); }
+  aside.panel {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-right: 2px;
+  }
+  .card {
+    background: var(--ash-900);
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--lava);
+    text-transform: uppercase;
+  }
+  ol.venues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  ol.venues button {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 6px 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--bone);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  ol.venues button:hover, ol.venues button.on { border-color: var(--line); background: var(--ash-800); }
+  .vname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vcount { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--bone); min-width: 2.5ch; text-align: right; }
+  .meter { grid-column: 1 / -1; height: 3px; background: var(--line); }
+  .meter i { display: block; height: 100%; background: var(--ember); transition: width 0.5s; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border: 1px solid var(--line);
+    color: var(--ash);
+    white-space: nowrap;
+  }
+  .chip.t-tavern { color: var(--amber); border-color: #5a4424; }
+  .chip.t-amph { color: var(--ember); border-color: #6a2e18; }
+  .chip.t-fest { color: #1a0f0b; background: var(--ember); border-color: var(--ember); }
+  .chip.t-wait { color: var(--smoke); border-style: dashed; }
+  .ladder { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+  .ladder .n { font-family: var(--mono); color: var(--ash); font-variant-numeric: tabular-nums; }
+  .key { font-size: 13px; color: var(--ash); margin: 0; }
+  .key b { color: var(--bone); font-weight: 600; }
+  .inspect .who { font-family: var(--display); font-size: 15px; color: var(--bone); }
+  .inspect .track { font-size: 15px; font-weight: 600; }
+  .inspect .artist { color: var(--lava); }
+  .inspect .where { font-family: var(--mono); font-size: 12px; color: var(--ash); }
+  .inspect .empty { color: var(--ash); margin: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 7px 12px;
+    color: #1a0f0b;
+    background: var(--ember);
+    border: 1px solid var(--ember);
+    cursor: pointer;
+  }
+  .btn.ghost { color: var(--bone); background: transparent; border-color: var(--line); }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+  .note { font-size: 12px; color: var(--ash); margin: 0; }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ash); }
+  select, input[type=range] { width: 100%; }
+  select {
+    font: inherit;
+    font-size: 13px;
+    color: var(--bone);
+    background: var(--ash-800);
+    border: 1px solid var(--line);
+    padding: 7px 8px;
+  }
+  input[type=range] { accent-color: var(--ember); }
+  .seg { display: flex; border: 1px solid var(--line); }
+  .seg button {
+    flex: 1;
+    padding: 6px 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ash);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+  .seg button[aria-pressed=true] { color: #1a0f0b; background: var(--lava); }
+  .val { font-family: var(--mono); color: var(--bone); font-variant-numeric: tabular-nums; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--lava); outline-offset: 2px; }
+  @media (max-width: 880px) {
+    .app { height: auto; min-height: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
+    main.stage { height: 62svh; min-height: 340px; }
+    aside.panel { overflow: visible; }
+    .proto { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live::before { animation: none; }
+  }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">EAR<span>SHOT</span></div>
+    <div class="zone">The Forge &middot; Metal zone</div>
+    <div class="live" id="live">0 listening now</div>
+    <div class="proto">Phase 0 &middot; simulated crowd</div>
+  </header>
+
+  <main class="stage">
+    <canvas id="world" aria-label="Isometric Metal zone with a live crowd gathered at venues"></canvas>
+    <div class="hint" id="hint">Drag to look around. Tap anyone.</div>
+    <div class="zoom">
+      <button id="zoomOut" aria-label="Zoom out">&minus;</button>
+      <button id="zoomIn" aria-label="Zoom in">+</button>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <section class="card inspect" id="inspect" aria-live="polite">
+      <h2>Inspector</h2>
+      <p class="empty">Tap an avatar to see what they're playing, or tap a stage.</p>
+    </section>
+
+    <section class="card">
+      <h2>Venues right now</h2>
+      <ol class="venues" id="venues"></ol>
+      <p class="key"><b>Front rows</b> are on the same song as the stage. <b>The field</b> is playing other songs by that artist.</p>
+    </section>
+
+    <section class="card">
+      <h2>Join the crowd</h2>
+      <label class="field" for="youTrack">Pick what you're playing
+        <select id="youTrack"></select>
+      </label>
+      <div class="row">
+        <button class="btn" id="youGo">Walk in</button>
+        <button class="btn ghost" id="youFind" disabled>Find me</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Simulation</h2>
+      <label class="field" for="crowd">Crowd size <span class="val" id="crowdVal">130</span>
+        <input type="range" id="crowd" min="20" max="260" step="10" value="130">
+      </label>
+      <div class="field">Time
+        <div class="seg" id="speed">
+          <button data-s="1" aria-pressed="false">1&times;</button>
+          <button data-s="10" aria-pressed="true">10&times;</button>
+          <button data-s="40" aria-pressed="false">40&times;</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="surge">Surge an artist</button>
+      </div>
+      <p class="note" id="surgeNote">Surge sends 45% of the crowd to one smaller artist, so you can watch a tavern turn into a festival.</p>
+    </section>
+
+    <section class="card">
+      <h2>Venue ladder</h2>
+      <div class="ladder">
+        <span class="chip">Busker</span><span class="n">1 listener</span>
+        <span class="chip t-tavern">Tavern</span><span class="n">2 to 9</span>
+        <span class="chip t-amph">Amphitheater</span><span class="n">10 to 49</span>
+        <span class="chip t-fest">Festival</span><span class="n">50+</span>
+      </div>
+      <p class="note">Every listener here is a bot. Songs come from a snapshot of well-known Metal tracks; the real build pulls Last.fm's live Metal chart and real listeners. Audio previews arrive with the full build.</p>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+  // ---------- data ----------
+  const ARTISTS = [
+    ["Metallica", 42, ["Master of Puppets", "Enter Sandman", "Nothing Else Matters", "One", "For Whom the Bell Tolls", "Fade to Black"]],
+    ["Iron Maiden", 12, ["The Trooper", "Fear of the Dark", "Run to the Hills", "Hallowed Be Thy Name"]],
+    ["Black Sabbath", 9, ["Paranoid", "Iron Man", "War Pigs"]],
+    ["Slipknot", 8, ["Duality", "Psychosocial", "Before I Forget"]],
+    ["System of a Down", 8, ["Chop Suey!", "Toxicity", "Aerials"]],
+    ["Megadeth", 5, ["Symphony of Destruction", "Holy Wars... The Punishment Due", "Hangar 18"]],
+    ["Ghost", 4, ["Mary on a Cross", "Square Hammer"]],
+    ["Pantera", 4, ["Walk", "Cowboys from Hell", "Cemetery Gates"]],
+    ["Slayer", 3, ["Raining Blood", "Angel of Death"]],
+    ["Gojira", 3, ["Stranded", "Silvera", "Amazonia"]],
+    ["Mastodon", 2, ["Blood and Thunder", "Oblivion"]],
+    ["Judas Priest", 2, ["Painkiller", "Breaking the Law"]],
+  ];
+  const TOTAL_W = ARTISTS.reduce((s, a) => s + a[1], 0);
+
+  const TIERS = {
+    busker: { label: "Busker", chip: "", h: 0.5, r0: 1.3, lift: 18 },
+    tavern: { label: "Tavern", chip: "t-tavern", h: 1.0, r0: 2.1, lift: 34 },
+    amph:   { label: "Amphitheater", chip: "t-amph", h: 1.5, r0: 2.9, lift: 26 },
+    fest:   { label: "Festival", chip: "t-fest", h: 2.4, r0: 4.1, lift: 58 },
+  };
+  const tierOf = n => n >= 50 ? "fest" : n >= 10 ? "amph" : n >= 2 ? "tavern" : "busker";
+
+  // ---------- world geometry ----------
+  const N = 32, TW = 16, TH = 8;
+  const OX = N * TW / 2, OY = 70;
+  const LW = N * TW, LH = N * TH + OY + 20;
+  const iso = (x, y) => [(x - y) * TW / 2 + OX, (x + y) * TH / 2 + OY];
+  const SLOTS = [[9, 9], [23, 6], [5, 22], [22, 19], [13, 26], [27, 26], [28, 12]];
+  const PLAZA = { x0: 1.6, x1: 5.6, y0: 8.4, y1: 12.6 };
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function mulberry(seed) {
+    return () => {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  const R = mulberry(4011);
+
+  // lava river along the back edge
+  const river = new Set();
+  const riverTiles = [];
+  for (let i = 0; i < N; i++) {
+    const rj = Math.round(0.6 + 0.6 * Math.sin(i / 3));
+    for (let j = 0; j <= rj + 1; j++) { river.add(i + "," + j); riverTiles.push([i, j]); }
+  }
+  const nearSlot = (x, y, d) => SLOTS.some(s => Math.hypot(s[0] - x, s[1] - y) < d);
+
+  // ---------- canvases ----------
+  const cvs = document.getElementById("world");
+  const ctx = cvs.getContext("2d");
+  const lo = document.createElement("canvas"); lo.width = LW; lo.height = LH;
+  const g = lo.getContext("2d");
+  const ground = document.createElement("canvas"); ground.width = LW; ground.height = LH;
+  const gg = ground.getContext("2d");
+
+  function diamond(c, cx, cy, col) {
+    c.fillStyle = col;
+    cx = Math.round(cx); cy = Math.round(cy);
+    for (let i = 0; i < TH; i++) {
+      const k = i < TH / 2 ? i : TH - 1 - i;
+      const hw = (k + 1) * 2;
+      c.fillRect(cx - hw, cy - TH / 2 + i, hw * 2, 1);
+    }
+  }
+  function poly(c, pts, col) {
+    c.fillStyle = col;
+    c.beginPath();
+    pts.forEach((p, i) => i ? c.lineTo(Math.round(p[0]), Math.round(p[1])) : c.moveTo(Math.round(p[0]), Math.round(p[1])));
+    c.closePath();
+    c.fill();
+  }
+  function box(c, x0, y0, w, d, h, top, left, right) {
+    const A = iso(x0, y0), B = iso(x0 + w, y0), C = iso(x0 + w, y0 + d), D = iso(x0, y0 + d);
+    poly(c, [D, C, [C[0], C[1] - h], [D[0], D[1] - h]], left);
+    poly(c, [B, C, [C[0], C[1] - h], [B[0], B[1] - h]], right);
+    poly(c, [[A[0], A[1] - h], [B[0], B[1] - h], [C[0], C[1] - h], [D[0], D[1] - h]], top);
+    return { A, B, C, D };
+  }
+
+  // ground: basalt with scattered tone, cliff faces on the front edges
+  const cracks = [];
+  (function buildGround() {
+    const tones = ["#231a18", "#261c1a", "#201716", "#2a1f1c", "#1e1614"];
+    for (let s = 0; s < 2 * N; s++) {
+      for (let i = 0; i < N; i++) {
+        const j = s - i;
+        if (j < 0 || j >= N) continue;
+        if (river.has(i + "," + j)) continue;
+        const [cx, cy] = iso(i + 0.5, j + 0.5);
+        diamond(gg, cx, cy, tones[Math.floor(R() * tones.length)]);
+        if (R() < 0.08) { gg.fillStyle = "#171110"; gg.fillRect(Math.round(cx) - 1 + Math.floor(R() * 4), Math.round(cy) - 1, 2, 1); }
+        if (R() < 0.07 && !nearSlot(i, j, 4.5) && j > 3) {
+          const len = 3 + Math.floor(R() * 3), dir = R() < 0.5 ? 1 : -1;
+          const px = [];
+          for (let k = 0; k < len; k++) px.push([Math.round(cx) - 3 + k * 2 * dir * 0.5 + k, Math.round(cy) - 1 + (k % 2)]);
+          cracks.push({ px, ph: R() * 6.28 });
+        }
+      }
+    }
+    // cliff faces
+    for (let i = 0; i < N; i++) {
+      const L = iso(i, N), Rr = iso(i + 1, N);
+      poly(gg, [L, Rr, [Rr[0], Rr[1] + 14], [L[0], L[1] + 14]], i % 2 ? "#2f1d17" : "#2a1914");
+    }
+    for (let j = 0; j < N; j++) {
+      const T = iso(N, j), B = iso(N, j + 1);
+      poly(gg, [T, B, [B[0], B[1] + 14], [T[0], T[1] + 14]], j % 2 ? "#1f1310" : "#1b110e");
+    }
+  })();
+
+  // ---------- props ----------
+  const props = [];
+  const smoke = [], sparks = [];
+  // forge
+  props.push({ d: 1 + 4 + 3 + 3 + 1, draw(t) {
+    const f = box(g, 1, 3, 4, 3, 24, "#4a3430", "#5b3e36", "#3c2a26");
+    // roof ridge
+    box(g, 1.2, 3.2, 3.6, 2.6, 30, "#3a2622", "#4a3029", "#301f1c");
+    // chimney
+    box(g, 4, 3.2, 0.8, 0.8, 44, "#2e211e", "#3d2b26", "#271c19");
+    // glowing door on front-left face
+    const mx = (f.D[0] + f.C[0]) / 2, my = (f.D[1] + f.C[1]) / 2;
+    const flick = 0.75 + 0.25 * Math.sin(t * 9) * Math.sin(t * 3.1);
+    g.fillStyle = `rgba(255,${Math.round(110 + 50 * flick)},43,1)`;
+    g.fillRect(Math.round(mx) - 3, Math.round(my) - 11, 5, 9);
+    g.fillStyle = "rgba(255,180,71,0.9)";
+    g.fillRect(Math.round(mx) - 2, Math.round(my) - 9, 3, 6);
+    // anvil
+    box(g, 5.6, 6.4, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38");
+  }});
+  // rocks
+  for (let k = 0; k < 26; k++) {
+    const x = 0.5 + R() * (N - 1.5), y = 3 + R() * (N - 4);
+    if (nearSlot(x, y, 6.2)) continue;
+    if (x < 7 && y < 13.5) continue;
+    const w = 0.4 + R() * 0.6, h = 3 + Math.floor(R() * 6);
+    props.push({ d: x + y, draw() { box(g, x, y, w, w * 0.8, h, "#3b302d", "#2f2523", "#251d1b"); } });
+  }
+  // braziers
+  const BRAZ = [[6.6, 8.2], [6.6, 12.8], [1.2, 13.4], [16.5, 4.2], [30.4, 18], [2.4, 29.4], [19.5, 30.4], [30.5, 30.3]];
+  for (const [x, y] of BRAZ) props.push({ d: x + y, draw(t) { brazier(x, y, t, 7); } });
+  function brazier(x, y, t, h) {
+    box(g, x - 0.2, y - 0.2, 0.4, 0.4, h, "#1a1210", "#3a2c28", "#2a1f1c");
+    const [cx, cy] = iso(x, y);
+    const fx = Math.round(cx), fy = Math.round(cy) - h - 1;
+    const f = reduced ? 1 : Math.sin(t * 13 + x * 3) * 0.5 + 0.5;
+    g.fillStyle = "#ff6a2b"; g.fillRect(fx - 2, fy - 2, 4, 3);
+    g.fillStyle = "#ffb347"; g.fillRect(fx - 1, fy - 3 - Math.round(f * 2), 2, 3);
+    g.fillStyle = "#fff0c2"; g.fillRect(fx, fy - 2, 1, 1);
+  }
+
+  // ---------- people ----------
+  const SKINS = ["#f1c7a5", "#d9a47c", "#b57a52", "#8a5634", "#5e3a24", "#e8b896"];
+  const HAIRS = ["#15100e", "#2b1d15", "#5a3a1e", "#8b6a3e", "#c9b18a", "#7a1f1a", "#d4d0c8"];
+  const SHIRTS = ["#3b1a1a", "#1d2a3a", "#2e2e2e", "#4a3b2a"];
+  const PRINTS = ["#ff6a2b", "#efe4d6", "#ffb347", "#c93a3a", "#8fb4d9"];
+  const PANTS = ["#1c2230", "#15151a", "#2a2320", "#23283a"];
+  const HANDLE_A = ["riff", "doom", "thrash", "grim", "iron", "void", "sludge", "blast", "ember", "crypt", "molten", "static", "black", "rust", "skull", "night", "ash", "storm"];
+  const HANDLE_B = ["witch", "cat", "lord", "wolf", "maiden", "goat", "crow", "smith", "ghoul", "reaper", "rider", "kid", "hound", "monk", "fang", "bat"];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const handle = () => pick(HANDLE_A) + pick(HANDLE_B) + (Math.random() < 0.5 ? "_" + Math.floor(Math.random() * 99) : "");
+
+  function drawPerson(lx, ly, p, bob, walk, arms) {
+    lx = Math.round(lx); ly = Math.round(ly);
+    g.fillStyle = "rgba(0,0,0,0.4)"; g.fillRect(lx - 2, ly, 5, 1);
+    const l1 = walk ? (walk > 0 ? 1 : 0) : 0, l2 = walk ? (walk > 0 ? 0 : 1) : 0;
+    g.fillStyle = p.pants;
+    g.fillRect(lx - 2, ly - 3 + l1, 2, 3 - l1);
+    g.fillRect(lx + 1, ly - 3 + l2, 2, 3 - l2);
+    const b = bob;
+    g.fillStyle = p.shirt; g.fillRect(lx - 2, ly - 7 + b, 5, 4);
+    g.fillStyle = p.print; g.fillRect(lx, ly - 6 + b, 1, 1);
+    g.fillStyle = p.skin;
+    if (arms) { g.fillRect(lx - 3, ly - 10 + b, 1, 3); g.fillRect(lx + 3, ly - 10 + b, 1, 3); }
+    else { g.fillRect(lx - 3, ly - 6 + b, 1, 2); g.fillRect(lx + 3, ly - 6 + b, 1, 2); }
+    const hb = b > 0 ? 1 : 0;
+    g.fillRect(lx - 1, ly - 10 + b + hb, 3, 3);
+    g.fillStyle = p.hair;
+    g.fillRect(lx - 1, ly - 11 + b + hb, 3, 1);
+    if (p.long) { g.fillRect(lx - 2, ly - 10 + b + hb, 1, 3 + hb); g.fillRect(lx + 2, ly - 10 + b + hb, 1, 3 + hb); }
+  }
+  const PERFORMER = { skin: "#d9a47c", hair: "#0f0b0a", long: true, shirt: "#0d0a09", print: "#ff6a2b", pants: "#0d0d10" };
+  function drawPerformer(x, y, lift, t, k, guitar) {
+    const [cx, cy] = iso(x, y);
+    const bob = reduced ? 0 : (Math.sin(t * 9 + k * 1.7) > 0.2 ? 1 : 0);
+    drawPerson(cx, cy - lift, PERFORMER, bob, 0, false);
+    if (guitar) {
+      g.fillStyle = "#a8322a"; g.fillRect(Math.round(cx) - 3, Math.round(cy - lift) - 5, 4, 2);
+      g.fillStyle = "#d9d0c4"; g.fillRect(Math.round(cx) + 1, Math.round(cy - lift) - 7, 4, 1);
+    }
+  }
+
+  // ---------- simulation state ----------
+  let bots = [];
+  let nextId = 1;
+  let simT = 0;
+  let speed = 10;
+  let targetCrowd = 130;
+  const venues = new Map();
+  const slotOwner = new Array(SLOTS.length).fill(null);
+  let you = null;
+  let sel = null;      // {type:'bot', id} | {type:'venue', artist}
+  let follow = null;   // bot id
+
+  function weightedArtist(excludeTop) {
+    let r = Math.random() * TOTAL_W;
+    for (const a of ARTISTS) { r -= a[1]; if (r <= 0) return a; }
+    return ARTISTS[0];
+  }
+  function pickTitle(a, avoid) {
+    const titles = a[2];
+    let tot = 0; const ws = titles.map((_, k) => { const w = 1 / Math.pow(k + 1, 0.7); tot += w; return w; });
+    for (let tries = 0; tries < 4; tries++) {
+      let r = Math.random() * tot;
+      for (let k = 0; k < titles.length; k++) { r -= ws[k]; if (r <= 0) { if (titles[k] !== avoid || titles.length === 1) return titles[k]; break; } }
+    }
+    return titles[0];
+  }
+  function nextTrack(b) {
+    let a;
+    if (b.track && Math.random() < 0.62) a = ARTISTS.find(x => x[0] === b.track.artist);
+    else a = weightedArtist();
+    b.track = { artist: a[0], title: pickTitle(a, b.track && b.track.title) };
+    b.endsAt = simT + 150 + Math.random() * 110;
+  }
+  function edgePoint() {
+    return Math.random() < 0.5 ? [N - 0.4, 4 + Math.random() * (N - 5)] : [2 + Math.random() * (N - 3), N - 0.4];
+  }
+  function makeBot(atEdge) {
+    const b = {
+      id: nextId++, handle: handle(),
+      look: { skin: pick(SKINS), hair: pick(HAIRS), long: Math.random() < 0.55, shirt: Math.random() < 0.72 ? "#15100f" : pick(SHIRTS), print: pick(PRINTS), pants: pick(PANTS) },
+      phase: Math.random() * 6.28, tempo: 7 + Math.random() * 4,
+      x: 0, y: 0, tx: 0, ty: 0, moving: false, walkT: 0,
+      track: null, endsAt: 0, gkey: null, gv: null, garr: null, gidx: -1, geom: null,
+      leaving: false, you: false, plazaWait: 0,
+    };
+    nextTrack(b);
+    b.endsAt = simT + Math.random() * 250;
+    if (atEdge) { const [ex, ey] = edgePoint(); b.x = ex; b.y = ey; }
+    bots.push(b);
+    return b;
+  }
+
+  function clampPos(x, y) {
+    return [Math.min(N - 0.7, Math.max(0.7, x)), Math.min(N - 0.7, Math.max(3.2, y))];
+  }
+  function spot(v, grp, idx, b) {
+    const s = SLOTS[v.slot], T = TIERS[v.tier];
+    const front = grp === "front";
+    const r0 = front ? T.r0 : T.r0 + 2.1;
+    const r = r0 + Math.sqrt(idx) * (front ? 0.5 : 0.62) + ((b.id * 0.37) % 0.25);
+    const f = ((idx * 0.61803398875) % 1) * 2 - 1;
+    const a = Math.PI / 4 + f * (front ? 1.1 : 1.45);
+    return clampPos(s[0] + Math.cos(a) * r, s[1] + Math.sin(a) * r);
+  }
+  function plazaSpot() {
+    return [PLAZA.x0 + Math.random() * (PLAZA.x1 - PLAZA.x0), PLAZA.y0 + Math.random() * (PLAZA.y1 - PLAZA.y0)];
+  }
+  function leaveGroup(b) {
+    if (b.garr && b.gidx >= 0 && b.garr[b.gidx] === b.id) b.garr[b.gidx] = null;
+    b.garr = null; b.gidx = -1; b.gv = null; b.gkey = null; b.geom = null;
+  }
+  function joinGroup(b, v, grp) {
+    const arr = v[grp];
+    let idx = arr.indexOf(null);
+    if (idx < 0) { arr.push(b.id); idx = arr.length - 1; } else arr[idx] = b.id;
+    b.garr = arr; b.gidx = idx; b.gv = v;
+  }
+  function setSlot(v, s) {
+    if (v.slot >= 0 && slotOwner[v.slot] === v) slotOwner[v.slot] = null;
+    v.slot = s;
+    if (s >= 0) slotOwner[s] = v;
+  }
+  function venueFor(a) {
+    let v = venues.get(a);
+    if (!v) { v = { artist: a, count: 0, tier: "busker", slot: -1, stage: null, front: [], field: [], geom: "" }; venues.set(a, v); }
+    return v;
+  }
+
+  function reassign(initial) {
+    const counts = new Map();
+    for (const b of bots) if (!b.leaving) counts.set(b.track.artist, (counts.get(b.track.artist) || 0) + 1);
+    for (const [a, n] of counts) venueFor(a).count = n;
+    for (const v of venues.values()) if (!counts.has(v.artist)) { v.count = 0; if (v.slot >= 0) setSlot(v, -1); }
+    const ranked = [...venues.values()].filter(v => v.count > 0).sort((a, b) => b.count - a.count);
+    const top = ranked[0];
+    if (top && top.slot !== 0) {
+      const cur = slotOwner[0];
+      if (!cur || initial || top.count > cur.count * 1.15 + 1) {
+        const old = top.slot;
+        if (cur) setSlot(cur, -1);
+        setSlot(top, 0);
+        if (cur) setSlot(cur, old);
+      }
+    }
+    for (const v of ranked) {
+      if (v.slot >= 0) continue;
+      let free = -1;
+      for (let s = 1; s < SLOTS.length; s++) if (!slotOwner[s]) { free = s; break; }
+      if (free < 0) {
+        let weakest = null;
+        for (let s = 1; s < SLOTS.length; s++) { const w = slotOwner[s]; if (!weakest || w.count < weakest.count) weakest = w; }
+        if (weakest && v.count > weakest.count + 2) { free = weakest.slot; setSlot(weakest, -1); }
+      }
+      if (free >= 0) setSlot(v, free);
+    }
+    for (const v of venues.values()) {
+      if (v.count === 0) continue;
+      v.tier = tierOf(v.count);
+      const tc = new Map();
+      for (const b of bots) if (!b.leaving && b.track.artist === v.artist) tc.set(b.track.title, (tc.get(b.track.title) || 0) + 1);
+      let best = v.stage, bestN = tc.get(v.stage) || 0;
+      for (const [t, n] of tc) if (n > bestN) { best = t; bestN = n; }
+      v.stage = best;
+      v.geom = v.slot + ":" + v.tier;
+    }
+    for (const b of bots) {
+      if (b.leaving) continue;
+      const v = venues.get(b.track.artist);
+      const grp = v.slot < 0 ? "plaza" : (b.track.title === v.stage ? "front" : "field");
+      const key = grp === "plaza" ? "plaza" : v.artist + "|" + grp;
+      if (b.gkey !== key) {
+        leaveGroup(b);
+        b.gkey = key;
+        if (grp === "plaza") { const [px, py] = plazaSpot(); b.tx = px; b.ty = py; b.plazaWait = 2 + Math.random() * 4; }
+        else joinGroup(b, v, grp);
+      }
+      if (grp !== "plaza" && b.geom !== v.geom) {
+        const [sx, sy] = spot(v, grp, b.gidx, b);
+        b.tx = sx; b.ty = sy; b.geom = v.geom;
+      }
+      if (initial) { b.x = b.tx; b.y = b.ty; }
+    }
+    for (const v of venues.values()) if (v.count === 0) { v.front = []; v.field = []; v.stage = null; }
+  }
+
+  function startLeaving(b) {
+    leaveGroup(b);
+    b.leaving = true;
+    const [ex, ey] = edgePoint(); b.tx = ex; b.ty = ey;
+  }
+
+  let churnClock = 0, assignClock = 0, uiClock = 0;
+  function stepSim(dt) {
+    for (const b of bots) if (!b.leaving && !b.you && simT >= b.endsAt) nextTrack(b);
+    churnClock += dt;
+    if (churnClock > 1.1) {
+      churnClock = 0;
+      const active = bots.filter(b => !b.leaving && !b.you);
+      const diff = targetCrowd - active.length;
+      if (diff > 0) for (let k = 0; k < Math.min(diff, 4); k++) makeBot(true);
+      else if (diff < 0) for (let k = 0; k < Math.min(-diff, 4); k++) startLeaving(pick(active.filter(b => !b.leaving)));
+      else if (Math.random() < 0.35 * Math.min(1, speed / 10) && active.length) { startLeaving(pick(active)); makeBot(true); }
+    }
+    assignClock += dt;
+    if (assignClock > 0.4) { assignClock = 0; reassign(false); }
+  }
+
+  function moveBots(dt) {
+    const spd = 2.3;
+    for (const b of bots) {
+      const dx = b.tx - b.x, dy = b.ty - b.y, dist = Math.hypot(dx, dy);
+      if (dist > 0.04) {
+        const st = Math.min(dist, spd * dt);
+        b.x += dx / dist * st; b.y += dy / dist * st;
+        b.moving = true; b.walkT += dt;
+      } else {
+        b.x = b.tx; b.y = b.ty; b.moving = false;
+        if (b.gkey === "plaza") {
+          b.plazaWait -= dt;
+          if (b.plazaWait <= 0) { const [px, py] = plazaSpot(); b.tx = px; b.ty = py; b.plazaWait = 3 + Math.random() * 5; }
+        }
+      }
+    }
+    const before = bots.length;
+    bots = bots.filter(b => !(b.leaving && !b.moving));
+    if (sel && sel.type === "bot" && !bots.some(b => b.id === sel.id)) { sel = null; follow = null; renderInspect(); }
+    if (before !== bots.length && follow && !bots.some(b => b.id === follow)) follow = null;
+  }
+
+  // ---------- rendering ----------
+  let S = 3, camX = 0, camY = 0, cw = 0, ch = 0, dpr = 1;
+
+  function drawVenue(v, t) {
+    const [sx, sy] = SLOTS[v.slot];
+    const T = TIERS[v.tier], h = T.h;
+    if (v.tier === "busker") {
+      diamond(g, ...iso(sx, sy), "#4a1f2a");
+      box(g, sx + 0.35, sy - 0.1, 0.5, 0.25, 2, "#1d1412", "#2b1e1b", "#221816");
+      drawPerformer(sx, sy, 0, t, 1, true);
+    } else if (v.tier === "tavern") {
+      const f = box(g, sx - h, sy - h, 2 * h, 2 * h, 13, "#4b2f28", "#5a3a2f", "#40291f");
+      const apex = iso(sx, sy); const ay = apex[1] - 24;
+      const tl = [f.D[0], f.D[1] - 13], tc = [f.C[0], f.C[1] - 13], tb = [f.B[0], f.B[1] - 13];
+      poly(g, [tl, tc, [apex[0], ay]], "#6e2b1f");
+      poly(g, [tc, tb, [apex[0], ay]], "#521f17");
+      const mx = (f.D[0] + f.C[0]) / 2, my = (f.D[1] + f.C[1]) / 2;
+      g.fillStyle = "#ffb347"; g.fillRect(Math.round(mx) - 4, Math.round(my) - 9, 3, 3);
+      g.fillRect(Math.round(mx) + 2, Math.round(my) - 7, 3, 3);
+      const rx = (f.B[0] + f.C[0]) / 2, ry = (f.B[1] + f.C[1]) / 2;
+      g.fillStyle = "#1a100c"; g.fillRect(Math.round(rx) - 1, Math.round(ry) - 9, 3, 8);
+      drawPerformer(sx + h + 0.35, sy + h + 0.35, 0, t, 2, true);
+    } else if (v.tier === "amph") {
+      box(g, sx - h, sy - h, 2 * h, 2 * h, 5, "#3e312e", "#4d3d39", "#322624");
+      const e1 = iso(sx + h, sy + h);
+      g.fillStyle = "#ff6a2b"; g.fillRect(Math.round(e1[0]) - 1, Math.round(e1[1]) - 5, 2, 1);
+      brazier(sx - h + 0.2, sy + h - 0.1, t, 9);
+      brazier(sx + h - 0.1, sy - h + 0.2, t, 9);
+      drawPerformer(sx - 0.45, sy + 0.45, 5, t, 1, true);
+      drawPerformer(sx + 0.45, sy - 0.45, 5, t, 2, true);
+      drawPerformer(sx - 0.3, sy - 0.3, 5, t, 3, false);
+    } else {
+      // festival: speakers, platform, truss, band
+      box(g, sx - h - 1.0, sy + h - 1.0, 0.8, 0.8, 16, "#141010", "#221b1a", "#1a1413");
+      box(g, sx + h - 1.0, sy - h - 1.0, 0.8, 0.8, 16, "#141010", "#221b1a", "#1a1413");
+      const f = box(g, sx - h, sy - h, 2 * h, 2 * h, 7, "#2b2222", "#3b2e2c", "#261d1c");
+      const pl = [f.D[0], f.D[1] - 7], pr = [f.B[0], f.B[1] - 7];
+      g.fillStyle = "#5e514c";
+      g.fillRect(Math.round(pl[0]) - 1, Math.round(pl[1]) - 40, 2, 40);
+      g.fillRect(Math.round(pr[0]) - 1, Math.round(pr[1]) - 40, 2, 40);
+      g.strokeStyle = "#6f625c"; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(Math.round(pl[0]), Math.round(pl[1]) - 40); g.lineTo(Math.round(pr[0]), Math.round(pr[1]) - 40); g.stroke();
+      for (let k = 1; k <= 4; k++) {
+        const lx = pl[0] + (pr[0] - pl[0]) * k / 5, ly = pl[1] + (pr[1] - pl[1]) * k / 5 - 40;
+        const on = reduced ? true : Math.sin(t * 4 + k * 1.3) > -0.3;
+        g.fillStyle = on ? (k % 2 ? "#ffb347" : "#ff6a2b") : "#3a2c28";
+        g.fillRect(Math.round(lx) - 1, Math.round(ly) + 1, 3, 2);
+      }
+      const w = 2 * h;
+      for (let k = 0; k < 4; k++) {
+        const u = (k + 0.8) / 4.6;
+        drawPerformer(sx - h + w * u, sy + h - w * u, 7, t, k, k !== 2);
+      }
+      // drum kit
+      box(g, sx - 0.6, sy - 0.6, 0.6, 0.6, 3, "#a8322a", "#7a241e", "#5c1b16");
+    }
+  }
+
+  function drawBeams(v, t) {
+    if (v.tier !== "fest" || reduced) return;
+    const [sx, sy] = SLOTS[v.slot], h = TIERS.fest.h;
+    const pl = iso(sx - h, sy + h), pr = iso(sx + h, sy - h);
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    for (let k = 1; k <= 4; k++) {
+      const lx = pl[0] + (pr[0] - pl[0]) * k / 5, ly = pl[1] + (pr[1] - pl[1]) * k / 5 - 47;
+      const sw = Math.sin(t * 0.9 + k * 1.9) * 1.2;
+      const rr = 6 + Math.sin(t * 0.6 + k) * 1.5;
+      const a = Math.PI / 4 + sw;
+      const [gx, gy] = iso(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr);
+      const grad = g.createLinearGradient(lx, ly, gx, gy);
+      const col = k % 2 ? "255,179,71" : "255,106,43";
+      grad.addColorStop(0, `rgba(${col},0.28)`); grad.addColorStop(1, `rgba(${col},0.02)`);
+      g.fillStyle = grad;
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(gx - 16, gy); g.lineTo(gx + 16, gy); g.closePath(); g.fill();
+    }
+    g.restore();
+    if (Math.random() < 0.05) {
+      for (const [cx, cy] of [iso(sx - h - 0.6, sy + h - 0.6), iso(sx + h - 0.6, sy - h - 0.6)]) {
+        for (let k = 0; k < 10; k++) sparks.push({ x: cx, y: cy - 16, vx: (Math.random() - 0.5) * 18, vy: -30 - Math.random() * 40, life: 1 });
+      }
+    }
+  }
+
+  function renderWorld(t, dt) {
+    g.clearRect(0, 0, LW, LH);
+    g.drawImage(ground, 0, 0);
+    for (const [i, j] of riverTiles) {
+      const [cx, cy] = iso(i + 0.5, j + 0.5);
+      const v = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.4 + i * 0.9 + j * 1.3);
+      const r = 194 + Math.round(61 * v), gr = 56 + Math.round(82 * v);
+      diamond(g, cx, cy, `rgb(${r},${gr},${26 + Math.round(20 * v)})`);
+      if (!reduced && Math.sin(t * 2.3 + i * 5.1 + j * 7.7) > 0.93) { g.fillStyle = "#ffe1a0"; g.fillRect(Math.round(cx) - 1 + ((i * 3) % 4), Math.round(cy) - 1, 2, 1); }
+    }
+    for (const c of cracks) {
+      const a = reduced ? 0.6 : 0.35 + 0.35 * (Math.sin(t * 1.7 + c.ph) + 1) / 2;
+      g.fillStyle = `rgba(255,106,43,${a.toFixed(2)})`;
+      for (const [x, y] of c.px) g.fillRect(x, y, 1, 1);
+    }
+    const items = [];
+    for (const p of props) items.push({ d: p.d, f: () => p.draw(t) });
+    for (const v of venues.values()) if (v.slot >= 0 && v.count > 0) { const s = SLOTS[v.slot]; items.push({ d: s[0] + s[1], f: () => drawVenue(v, t) }); }
+    for (const b of bots) items.push({ d: b.x + b.y, f: () => drawBot(b, t) });
+    items.sort((a, b) => a.d - b.d);
+    for (const it of items) it.f();
+    for (const v of venues.values()) if (v.slot >= 0 && v.count > 0) drawBeams(v, t);
+    // chimney smoke
+    if (!reduced && Math.random() < 0.25) { const [cx, cy] = iso(4.4, 3.6); smoke.push({ x: cx, y: cy - 46, vx: 3 + Math.random() * 3, vy: -8 - Math.random() * 5, life: 1 }); }
+    for (const p of smoke) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 0.22; }
+    for (const p of sparks) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 60 * dt; p.life -= dt * 1.1; }
+    for (let k = smoke.length - 1; k >= 0; k--) if (smoke[k].life <= 0) smoke.splice(k, 1);
+    for (let k = sparks.length - 1; k >= 0; k--) if (sparks[k].life <= 0) sparks.splice(k, 1);
+    for (const p of smoke) { g.fillStyle = `rgba(109,91,99,${(p.life * 0.5).toFixed(2)})`; const s = 2 + Math.round((1 - p.life) * 3); g.fillRect(Math.round(p.x), Math.round(p.y), s, s); }
+    for (const p of sparks) { g.fillStyle = p.life > 0.5 ? "#ffe1a0" : "#ff6a2b"; g.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); }
+  }
+
+  function drawBot(b, t) {
+    const [cx, cy] = iso(b.x, b.y);
+    const isSel = sel && sel.type === "bot" && sel.id === b.id;
+    if (isSel || b.you) {
+      g.fillStyle = b.you ? "#efe4d6" : "#ffb347";
+      const x = Math.round(cx), y = Math.round(cy);
+      g.fillRect(x - 4, y, 2, 1); g.fillRect(x + 3, y, 2, 1); g.fillRect(x - 1, y + 2, 3, 1); g.fillRect(x - 1, y - 2 - 11, 3, 1);
+    }
+    let bob = 0, walk = 0, arms = false;
+    if (b.moving) walk = Math.sin(b.walkT * 14) > 0 ? 1 : -1;
+    else if (!reduced && b.gkey && b.gkey !== "plaza") {
+      const front = b.gkey.endsWith("|front");
+      const s = Math.sin(t * (front ? b.tempo + 2 : b.tempo * 0.6) + b.phase);
+      bob = s > 0.3 ? 1 : 0;
+      arms = front && Math.sin(t * 0.7 + b.phase * 3) > 0.55;
+    }
+    drawPerson(cx, cy, b.look, bob, walk, arms);
+  }
+
+  function resize() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const r = cvs.getBoundingClientRect();
+    const oldCw = cw, oldCh = ch;
+    cw = r.width; ch = r.height;
+    cvs.width = Math.round(cw * dpr); cvs.height = Math.round(ch * dpr);
+    if (!oldCw) {
+      S = Math.max(2, Math.min(5, Math.floor(Math.min(cw / 300, ch / 190))));
+      centerOn(12.5, 12.5);
+    } else { camX += (cw - oldCw) / 2; camY += (ch - oldCh) / 2; clampCam(); }
+  }
+  function centerOn(x, y) {
+    const [lx, ly] = iso(x, y);
+    camX = cw / 2 - lx * S; camY = ch / 2 - ly * S;
+    clampCam();
+  }
+  function clampCam() {
+    const W = LW * S, H = LH * S, m = 60;
+    camX = W < cw ? (cw - W) / 2 : Math.min(m, Math.max(cw - W - m, camX));
+    camY = H < ch ? (ch - H) / 2 : Math.min(m, Math.max(ch - H - m, camY));
+  }
+  function zoom(delta) {
+    const ns = Math.max(1, Math.min(6, S + delta));
+    if (ns === S) return;
+    const wx = (cw / 2 - camX) / S, wy = (ch / 2 - camY) / S;
+    S = ns;
+    camX = cw / 2 - wx * S; camY = ch / 2 - wy * S;
+    clampCam();
+  }
+
+  function drawLabels(t) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const toScreen = (lx, ly) => [camX + lx * S, camY + ly * S];
+    for (const v of venues.values()) {
+      if (v.slot < 0 || v.count === 0) continue;
+      const [sx, sy] = SLOTS[v.slot];
+      const T = TIERS[v.tier];
+      const [lx, ly] = iso(sx, sy);
+      const [x, y] = toScreen(lx, ly - T.lift - 8);
+      const big = v.tier === "fest";
+      const name = v.artist.toUpperCase();
+      ctx.font = `700 ${big ? 15 : 11}px Silkscreen, "Courier New", monospace`;
+      const nw = ctx.measureText(name).width;
+      const sub = v.tier === "busker" ? "1 here" : `${v.count} here · ♪ ${v.stage}`;
+      ctx.font = `500 ${big ? 12 : 10}px "Chivo Mono", ui-monospace, monospace`;
+      const sw = ctx.measureText(sub).width;
+      const w = Math.max(nw, sw) + 16, hgt = big ? 44 : 34;
+      const bx = Math.round(x - w / 2), by = Math.round(y - hgt);
+      const isSel = sel && sel.type === "venue" && sel.artist === v.artist;
+      ctx.fillStyle = "rgba(14,10,9,0.86)";
+      ctx.fillRect(bx, by, w, hgt);
+      ctx.strokeStyle = isSel ? "#ffb347" : big ? "#ff6a2b" : "#4a3834";
+      ctx.lineWidth = isSel || big ? 2 : 1;
+      ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, hgt - 1);
+      ctx.fillStyle = "#efe4d6";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.font = `700 ${big ? 15 : 11}px Silkscreen, "Courier New", monospace`;
+      ctx.fillText(name, x, by + 5);
+      ctx.font = `500 ${big ? 12 : 10}px "Chivo Mono", ui-monospace, monospace`;
+      ctx.fillStyle = "#ffb347";
+      ctx.fillText(sub, x, by + (big ? 25 : 19));
+    }
+    // plaza label
+    {
+      const [lx, ly] = iso(3.6, 10.5);
+      const [x, y] = toScreen(lx, ly - 20);
+      const n = bots.filter(b => b.gkey === "plaza").length;
+      if (n) {
+        ctx.font = `500 10px "Chivo Mono", ui-monospace, monospace`;
+        const txt = `PLAZA · ${n} waiting for a stage`;
+        const w = ctx.measureText(txt).width + 12;
+        ctx.fillStyle = "rgba(14,10,9,0.8)"; ctx.fillRect(Math.round(x - w / 2), Math.round(y - 16), w, 16);
+        ctx.fillStyle = "#a39187"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(txt, x, y - 8);
+      }
+    }
+    const tag = (b, text, col) => {
+      const [lx, ly] = iso(b.x, b.y);
+      const [x, y] = toScreen(lx, ly - 15);
+      ctx.font = `700 10px Silkscreen, "Courier New", monospace`;
+      const w = ctx.measureText(text).width + 10;
+      ctx.fillStyle = col; ctx.fillRect(Math.round(x - w / 2), Math.round(y - 14), w, 14);
+      ctx.fillStyle = "#1a0f0b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(text, x, y - 7);
+    };
+    if (you) tag(you, "YOU", "#efe4d6");
+    if (sel && sel.type === "bot") { const b = bots.find(x => x.id === sel.id); if (b && !b.you) tag(b, b.handle, "#ffb347"); }
+  }
+
+  function render(t, dt) {
+    renderWorld(t, dt);
+    if (follow) {
+      const b = bots.find(x => x.id === follow);
+      if (b) {
+        const [lx, ly] = iso(b.x, b.y);
+        const tx = cw / 2 - lx * S, ty = ch / 2 - (ly - 10) * S;
+        camX += (tx - camX) * Math.min(1, dt * 4); camY += (ty - camY) * Math.min(1, dt * 4);
+        clampCam();
+      }
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#0b0808";
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(lo, Math.round(camX * dpr), Math.round(camY * dpr), Math.round(LW * S * dpr), Math.round(LH * S * dpr));
+    drawLabels(t);
+  }
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function renderVenues() {
+    const list = [...venues.values()].filter(v => v.count > 0).sort((a, b) => b.count - a.count);
+    const max = list.length ? list[0].count : 1;
+    $("venues").innerHTML = list.map(v => {
+      const T = TIERS[v.tier];
+      const chip = v.slot < 0 ? `<span class="chip t-wait">No stage yet</span>` : `<span class="chip ${T.chip}">${T.label}</span>`;
+      const on = sel && sel.type === "venue" && sel.artist === v.artist ? " on" : "";
+      return `<li><button class="${on}" data-artist="${esc(v.artist)}"><span class="vname">${esc(v.artist)}</span>${chip}<span class="vcount">${v.count}</span><span class="meter"><i style="width:${(v.count / max * 100).toFixed(1)}%"></i></span></button></li>`;
+    }).join("");
+    const n = bots.filter(b => !b.leaving).length;
+    $("live").textContent = `${n} listening now`;
+  }
+
+  function renderInspect() {
+    const el = $("inspect");
+    let html = "<h2>Inspector</h2>";
+    if (!sel) {
+      html += `<p class="empty">Tap an avatar to see what they're playing, or tap a stage.</p>`;
+    } else if (sel.type === "bot") {
+      const b = bots.find(x => x.id === sel.id);
+      if (!b) { sel = null; return renderInspect(); }
+      const v = venues.get(b.track.artist);
+      const where = b.leaving ? "heading out" : b.gkey === "plaza" ? "in the plaza, waiting for a stage" :
+        b.gkey && b.gkey.endsWith("|front") ? `front rows at the ${TIERS[v.tier].label.toLowerCase()}` : `in the field at the ${TIERS[v.tier].label.toLowerCase()}`;
+      const following = follow === b.id;
+      html += `<div class="who">${b.you ? "You" : esc(b.handle)}</div>
+        <div><div class="track">${esc(b.track.title)}</div><div class="artist">${esc(b.track.artist)}</div></div>
+        <div class="where">${esc(where)}</div>
+        <div class="row">
+          <button class="btn" id="tune">${following ? "Stop following" : "Tune in"}</button>
+          <button class="btn ghost" disabled title="Previews play in the full build">Preview</button>
+        </div>
+        <p class="note">Tune in keeps the camera on them as their music changes. 30-second previews come from the iTunes API in the full build.</p>`;
+    } else {
+      const v = venues.get(sel.artist);
+      if (!v || v.count === 0) { sel = null; return renderInspect(); }
+      const front = bots.filter(b => b.gkey === v.artist + "|front").length;
+      html += `<div class="who">${esc(v.artist)}</div>
+        <div class="row"><span class="chip ${v.slot < 0 ? "t-wait" : TIERS[v.tier].chip}">${v.slot < 0 ? "No stage yet" : TIERS[v.tier].label}</span></div>
+        <div><div class="track">♪ ${esc(v.stage || "")}</div><div class="where">on stage now</div></div>
+        <div class="where">${v.count} listening &middot; ${front} in the front rows &middot; ${v.count - front} in the field</div>`;
+    }
+    el.innerHTML = html;
+    const tb = $("tune");
+    if (tb) tb.onclick = () => { follow = follow === sel.id ? null : sel.id; renderInspect(); };
+  }
+
+  $("venues").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-artist]");
+    if (!btn) return;
+    const v = venues.get(btn.dataset.artist);
+    sel = { type: "venue", artist: v.artist }; follow = null;
+    if (v.slot >= 0) { const [sx, sy] = SLOTS[v.slot]; centerOn(sx + 1.5, sy + 1.5); }
+    else centerOn(3.6, 10.5);
+    renderInspect(); renderVenues();
+  });
+
+  // you
+  const yt = $("youTrack");
+  yt.innerHTML = ARTISTS.map(a => `<optgroup label="${esc(a[0])}">${a[2].map(t => `<option value="${esc(a[0])}|${esc(t)}">${esc(t)}</option>`).join("")}</optgroup>`).join("");
+  yt.value = "Iron Maiden|The Trooper";
+  $("youGo").addEventListener("click", () => {
+    const [artist, title] = yt.value.split("|");
+    if (!you) { you = makeBot(true); you.you = true; you.handle = "you"; you.look = { skin: "#e8b896", hair: "#2b1d15", long: false, shirt: "#efe4d6", print: "#ff6a2b", pants: "#1c2230" }; }
+    you.track = { artist, title }; you.endsAt = Infinity;
+    reassign(false);
+    sel = { type: "bot", id: you.id }; follow = you.id;
+    $("youGo").textContent = "Switch track"; $("youFind").disabled = false;
+    renderInspect(); renderVenues();
+  });
+  $("youFind").addEventListener("click", () => { if (you) { sel = { type: "bot", id: you.id }; follow = you.id; renderInspect(); } });
+
+  $("crowd").addEventListener("input", e => { targetCrowd = +e.target.value; $("crowdVal").textContent = targetCrowd; });
+  $("speed").addEventListener("click", e => {
+    const b = e.target.closest("button[data-s]"); if (!b) return;
+    speed = +b.dataset.s;
+    for (const x of $("speed").querySelectorAll("button")) x.setAttribute("aria-pressed", x === b ? "true" : "false");
+  });
+  $("surge").addEventListener("click", () => {
+    const ranked = [...venues.values()].filter(v => v.count > 0).sort((a, b) => b.count - a.count).map(v => v.artist);
+    const pool = ARTISTS.filter(a => a[0] !== ranked[0] && a[0] !== ranked[1]);
+    const a = pick(pool);
+    for (const b of bots) {
+      if (b.leaving || b.you || Math.random() > 0.45) continue;
+      b.track = { artist: a[0], title: pickTitle(a) };
+      b.endsAt = simT + 200 + Math.random() * 140;
+    }
+    reassign(false);
+    $("surgeNote").textContent = `${a[0]} just surged. Watch the crowd walk over.`;
+    const v = venues.get(a[0]);
+    sel = { type: "venue", artist: a[0] }; follow = null;
+    if (v && v.slot >= 0) { const [sx, sy] = SLOTS[v.slot]; centerOn(sx + 1.5, sy + 1.5); }
+    renderInspect(); renderVenues();
+  });
+  $("zoomIn").addEventListener("click", () => zoom(1));
+  $("zoomOut").addEventListener("click", () => zoom(-1));
+  cvs.addEventListener("wheel", e => { e.preventDefault(); zoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+
+  // pointer: drag to pan, tap to select
+  let down = null;
+  cvs.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY, cx: camX, cy: camY, moved: false }; cvs.setPointerCapture(e.pointerId); });
+  cvs.addEventListener("pointermove", e => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!down.moved && Math.hypot(dx, dy) > 5) { down.moved = true; follow = null; cvs.classList.add("dragging"); }
+    if (down.moved) { camX = down.cx + dx; camY = down.cy + dy; clampCam(); }
+  });
+  cvs.addEventListener("pointerup", e => {
+    if (!down) return;
+    const wasTap = !down.moved;
+    down = null; cvs.classList.remove("dragging");
+    if (wasTap) tapAt(e);
+  });
+  cvs.addEventListener("pointercancel", () => { down = null; cvs.classList.remove("dragging"); });
+
+  function tapAt(e) {
+    const r = cvs.getBoundingClientRect();
+    const lx = (e.clientX - r.left - camX) / S, ly = (e.clientY - r.top - camY) / S;
+    let hit = null, hd = -1;
+    for (const b of bots) {
+      const [cx, cy] = iso(b.x, b.y);
+      if (lx >= cx - 4 && lx <= cx + 4 && ly >= cy - 13 && ly <= cy + 2) { const d = b.x + b.y; if (d > hd) { hd = d; hit = b; } }
+    }
+    if (hit) { sel = { type: "bot", id: hit.id }; follow = null; }
+    else {
+      let vh = null, best = 1e9;
+      for (const v of venues.values()) {
+        if (v.slot < 0 || v.count === 0) continue;
+        const [sx, sy] = SLOTS[v.slot];
+        const [cx, cy] = iso(sx, sy);
+        const reach = 14 + TIERS[v.tier].h * 12;
+        const d = Math.hypot(lx - cx, ly - (cy - 8));
+        if (d < reach && d < best) { best = d; vh = v; }
+      }
+      sel = vh ? { type: "venue", artist: vh.artist } : null;
+      follow = null;
+    }
+    renderInspect(); renderVenues();
+  }
+
+  // ---------- boot ----------
+  for (let k = 0; k < targetCrowd; k++) makeBot(false);
+  reassign(true);
+  reassign(true);
+  new ResizeObserver(() => resize()).observe(cvs);
+  resize();
+  renderVenues();
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const t = now / 1000;
+    simT += dt * speed;
+    stepSim(dt);
+    moveBots(dt);
+    render(t, dt);
+    uiClock += dt;
+    if (uiClock > 0.5) { uiClock = 0; renderVenues(); if (sel) renderInspect(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  if (document.fonts && document.fonts.load) { document.fonts.load('700 12px Silkscreen'); document.fonts.load('500 12px "Chivo Mono"'); }
+})();
+</script>

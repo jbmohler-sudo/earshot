@@ -1,0 +1,16 @@
+{
+  "name": "@earshot/sources",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./lastfm": "./src/lastfm/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@earshot/core": "workspace:*"
+  }
+}

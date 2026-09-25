@@ -1,0 +1,21 @@
+{
+  "name": "earshot",
+  "private": true,
+  "description": "An open source, pixel-art isometric music world.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @earshot/web dev",
+    "build": "pnpm --filter @earshot/web build",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.2"
+  }
+}
