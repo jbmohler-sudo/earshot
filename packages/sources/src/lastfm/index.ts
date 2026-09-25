@@ -1,3 +1,4 @@
-// Last.fm source: web auth helpers and the now-playing poll. Built in steps 4–5 of the Phase 1 brief.
+// Last.fm source: web auth helpers (step 4) and the now-playing poll (step 5).
+export * from "./auth";
 
 export const LASTFM_SOURCE_ID = "lastfm";

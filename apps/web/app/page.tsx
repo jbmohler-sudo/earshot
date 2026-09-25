@@ -1,4 +1,5 @@
 import { tierOf } from "@earshot/core";
+import Link from "next/link";
 
 const LADDER = [
   { n: 1, label: "Busker", range: "1 listener" },
@@ -26,6 +27,11 @@ export default function Home() {
         ))}
       </ul>
       <p className="soon">Doors open soon.</p>
+      <p>
+        <Link className="btn" href="/me">
+          Get your avatar ready
+        </Link>
+      </p>
     </main>
   );
 }
