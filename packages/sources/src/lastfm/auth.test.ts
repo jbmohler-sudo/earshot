@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { authUrl, getSession, LastfmError, signParams } from "./auth";
+import { LastfmError } from "./api.ts";
+import { authUrl, getSession, signParams } from "./auth.ts";
 
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
 

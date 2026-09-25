@@ -1,7 +1,7 @@
 // Plug-in contracts. Core deals in "engagements": a person, a thing, right now.
 // Nothing in this package knows what kind of thing it is.
 
-import type { Tier } from "./tiers";
+import type { Tier } from "./tiers.ts";
 
 /** A linked external account the poller reads from. */
 export interface SourceAccount {

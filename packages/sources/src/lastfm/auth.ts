@@ -2,8 +2,7 @@
 // 1. Send the user to authUrl(). Last.fm redirects back to `cb` with ?token=...
 // 2. Exchange the token with getSession(); the returned key never expires and must stay server-side.
 import { createHash } from "node:crypto";
-
-export const LASTFM_API_ROOT = "https://ws.audioscrobbler.com/2.0/";
+import { LASTFM_API_ROOT, LastfmError } from "./api.ts";
 
 export interface LastfmCredentials {
   apiKey: string;
@@ -30,15 +29,6 @@ export function signParams(params: Record<string, string>, sharedSecret: string)
     .map((k) => k + params[k])
     .join("");
   return createHash("md5").update(body + sharedSecret, "utf8").digest("hex");
-}
-
-export class LastfmError extends Error {
-  constructor(
-    readonly code: number,
-    message: string,
-  ) {
-    super(`Last.fm error ${code}: ${message}`);
-  }
 }
 
 export async function getSession(

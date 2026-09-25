@@ -1,3 +1,2 @@
-// Zone plug-in stub. The full ZonePlugin (layout, venue renderers, emotes) lands with the world port.
-
-export const id = "template";
+// Zone plug-in. The full ZonePlugin (layout, venue renderers, emotes) lands with the world port.
+export { claims, id, TAGS } from "./claims.ts";

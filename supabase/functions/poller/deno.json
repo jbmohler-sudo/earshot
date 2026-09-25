@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "@earshot/core": "../../../packages/core/src/index.ts",
+    "@earshot/sources/lastfm/poller": "../../../packages/sources/src/lastfm/poller.ts",
+    "@earshot/zones/registry": "../../../zones/registry.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+  }
+}
