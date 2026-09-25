@@ -1,5 +1,6 @@
 // Avatar: three palette picks plus hair length. Stored as profiles.avatar (jsonb).
-// Palettes come from the Phase 0 prototype.
+// Palettes come from the Phase 0 prototype. Drawing is core's drawPerson.
+import type { Look } from "@earshot/core";
 
 export const SKINS = ["#f1c7a5", "#e8b896", "#d9a47c", "#b57a52", "#8a5634", "#5e3a24"] as const;
 export const HAIRS = ["#15100e", "#2b1d15", "#5a3a1e", "#8b6a3e", "#c9b18a", "#7a1f1a", "#d4d0c8"] as const;
@@ -28,15 +29,6 @@ export function parseAvatar(raw: unknown): Avatar {
   };
 }
 
-export interface Look {
-  skin: string;
-  hair: string;
-  long: boolean;
-  shirt: string;
-  print: string;
-  pants: string;
-}
-
 export function lookOf(a: Avatar): Look {
   return {
     skin: SKINS[a.skin]!,
@@ -46,38 +38,4 @@ export function lookOf(a: Avatar): Look {
     print: a.shirt === 6 ? "#efe4d6" : "#ff6a2b",
     pants: "#1c2230",
   };
-}
-
-/** The prototype's pixel person, feet at (lx, ly). One unit = one art pixel. */
-export function drawPerson(g: CanvasRenderingContext2D, lx: number, ly: number, p: Look, bob = 0, walk = 0, arms = false) {
-  lx = Math.round(lx);
-  ly = Math.round(ly);
-  g.fillStyle = "rgba(0,0,0,0.4)";
-  g.fillRect(lx - 2, ly, 5, 1);
-  const l1 = walk ? (walk > 0 ? 1 : 0) : 0;
-  const l2 = walk ? (walk > 0 ? 0 : 1) : 0;
-  g.fillStyle = p.pants;
-  g.fillRect(lx - 2, ly - 3 + l1, 2, 3 - l1);
-  g.fillRect(lx + 1, ly - 3 + l2, 2, 3 - l2);
-  const b = bob;
-  g.fillStyle = p.shirt;
-  g.fillRect(lx - 2, ly - 7 + b, 5, 4);
-  g.fillStyle = p.print;
-  g.fillRect(lx, ly - 6 + b, 1, 1);
-  g.fillStyle = p.skin;
-  if (arms) {
-    g.fillRect(lx - 3, ly - 10 + b, 1, 3);
-    g.fillRect(lx + 3, ly - 10 + b, 1, 3);
-  } else {
-    g.fillRect(lx - 3, ly - 6 + b, 1, 2);
-    g.fillRect(lx + 3, ly - 6 + b, 1, 2);
-  }
-  const hb = b > 0 ? 1 : 0;
-  g.fillRect(lx - 1, ly - 10 + b + hb, 3, 3);
-  g.fillStyle = p.hair;
-  g.fillRect(lx - 1, ly - 11 + b + hb, 3, 1);
-  if (p.long) {
-    g.fillRect(lx - 2, ly - 10 + b + hb, 1, 3 + hb);
-    g.fillRect(lx + 2, ly - 10 + b + hb, 1, 3 + hb);
-  }
 }

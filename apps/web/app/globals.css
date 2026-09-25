@@ -135,3 +135,93 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   .avatar-row { flex-direction: column; }
   .avatar-preview { width: 96px; height: 96px; }
 }
+
+/* ---- zone view (ported from the Phase 0 prototype) ---- */
+.zone-app {
+  height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px;
+}
+.zone-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; }
+.zone-name { font-family: var(--display); font-size: 13px; letter-spacing: 0.08em; color: var(--lava); }
+.live { font-family: var(--mono); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.live::before { content: ""; width: 8px; height: 8px; background: var(--ember); box-shadow: 0 0 8px var(--ember); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.proto {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ash);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+}
+.zone-stage { position: relative; min-height: 0; border: 1px solid var(--line); background: #0b0808; overflow: hidden; }
+.zone-canvas { position: absolute; inset: 0; }
+.zone-canvas canvas { image-rendering: pixelated; }
+.zone-hint, .zone-empty {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ash);
+  background: rgba(18, 13, 12, 0.85);
+  padding: 4px 8px;
+}
+.zone-hint { left: 10px; bottom: 10px; pointer-events: none; }
+.zone-empty { left: 50%; top: 16px; transform: translateX(-50%); font-size: 13px; padding: 8px 12px; max-width: calc(100% - 32px); }
+.zone-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; }
+.zone-zoom button {
+  width: 32px;
+  height: 32px;
+  font: 16px var(--display);
+  color: var(--bone);
+  background: rgba(27, 20, 19, 0.92);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.zone-zoom button:hover { border-color: var(--ember); }
+.zone-panel { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.zone-panel .card { display: flex; flex-direction: column; gap: 10px; }
+.inspect .who { font-family: var(--display); font-size: 15px; }
+.inspect .track { font-size: 15px; font-weight: 600; }
+.inspect .artist { color: var(--lava); }
+.inspect .where { font-family: var(--mono); font-size: 12px; color: var(--ash); }
+ol.venues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+ol.venues button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--bone);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+ol.venues button:hover, ol.venues button.on { border-color: var(--line); background: #231a18; }
+.vname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vcount { font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 2.5ch; text-align: right; }
+.meter { grid-column: 1 / -1; height: 3px; background: var(--line); }
+.meter i { display: block; height: 100%; background: var(--ember); transition: width 0.5s; }
+.chip.t-tavern { color: var(--amber); border-color: #5a4424; }
+.chip.t-amph { color: var(--ember); border-color: #6a2e18; }
+.chip.t-fest { color: #1a0f0b; background: var(--ember); border-color: var(--ember); }
+.chip.t-wait { color: #6d5b63; border-style: dashed; }
+.ladder-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+.ladder-grid .chip { justify-self: start; }
+@media (max-width: 880px) {
+  .zone-app { height: auto; min-height: 100svh; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
+  .zone-stage { height: 62svh; min-height: 340px; }
+  .zone-panel { overflow: visible; }
+  .proto { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live::before { animation: none; }
+}

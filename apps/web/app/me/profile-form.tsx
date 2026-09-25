@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { type Avatar, drawPerson, HAIRS, lookOf, SHIRTS, SKINS } from "@/lib/avatar";
+import { drawPerson } from "@earshot/core";
+import { type Avatar, HAIRS, lookOf, SHIRTS, SKINS } from "@/lib/avatar";
+import { canvasPainter } from "@/lib/world/canvas-painter";
 import { saveProfile, type SaveState } from "./actions";
 
 export function ProfileForm({ displayName, avatar: initial }: { displayName: string; avatar: Avatar }) {
@@ -75,7 +77,7 @@ function AvatarPreview({ avatar }: { avatar: Avatar }) {
     const g = ref.current?.getContext("2d");
     if (!g) return;
     g.clearRect(0, 0, 16, 16);
-    drawPerson(g, 7, 14, lookOf(avatar));
+    drawPerson(canvasPainter(g), 7, 14, lookOf(avatar));
   }, [avatar]);
   return <canvas ref={ref} width={16} height={16} className="avatar-preview" aria-label="Your avatar" role="img" />;
 }
