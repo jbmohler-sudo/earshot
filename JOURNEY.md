@@ -5,15 +5,16 @@
 ## Current State
 
 - **Phase:** 1 (real people in the world). Gate to Phase 2: 10 friends connected and coming back on their own.
-- **Done:** Steps 1–5, live at https://earshot.world.
+- **Done:** Steps 1–6, live at https://earshot.world.
   - **Step 1:** scaffold and deploy.
   - **Step 2:** Supabase schema, RLS and grants.
   - **Step 3:** magic-link sign-in, `/me` with name, avatar picker and hide toggle.
   - **Step 4:** Last.fm connect, verified by Jeff as MightyZaino.
-  - **Step 5:** poller Edge Function on a 30 s pg_cron, adaptive polling, and the genre mapper.
-- **Waiting on Jeff:** Jeff plays music. His real listening should appear in `engagements` and `artist_zones`; that's the step 5 check-in.
-- **Next:** Step 6: port the prototype world into `packages/core` + PixiJS renderer, Metal zone first.
-- **Biggest open question:** Email delivery for friends. Supabase's built-in SMTP only sends to org team members, so custom SMTP (e.g. Resend) is needed before step 9.
+  - **Step 5:** poller Edge Function on a 30 s pg_cron, adaptive polling, and the genre mapper (min confidence 0.35, generic tags down-weighted). Verified with Jeff's real listening.
+  - **Step 6:** the prototype world ported into `packages/core` (World model), the Forge as the Metal zone plug-in, and a PixiJS renderer at `/z/metal`. `?sim=N` shows a labelled simulated crowd.
+- **Next:** Step 7: realtime presence. The server writes `presence`, clients subscribe per zone, and the real `/z/metal` shows real people.
+- **Biggest open question:** Where slot assignment runs in step 7 (see Open Questions).
+
 
 ## The Story So Far
 
@@ -42,6 +43,12 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-25 | Next poll is scheduled 5 s early (`SCHEDULE_SLACK_MS`) | Otherwise "+30 s" lands just after the next cron tick and the real cadence becomes 60 s |
 | 2026-09-25 | Genre mapper: score = Σ tag count × zone claims, over the top 10 tags; ties go to zone order (metal, indie, folk); unclaimed → outskirts; `zones/overrides.json` wins; tags cached 30 days | From the brief, made concrete |
 | 2026-09-25 | Shared packages use explicit `.ts` import extensions (`allowImportingTsExtensions`) | Lets the Deno Edge Function import `packages/*` and `zones/*/src/claims.ts` directly through an import map |
+| 2026-09-25 | Genre policy lives in `zones/registry.ts` (`mapTags`): MIN_CONFIDENCE 0.35; alternative/rock/pop weighted 0.25 and unable to win a zone alone; seen live/favorites weighted 0. Core's `pickZone` only takes generic options. | Beastie Boys landed in Indie at 0.13 on "alternative" alone. Core must stay music-free. |
+| 2026-09-25 | Scaled adaptive polling approved by Jeff (full backoff at 120+ accounts) | — |
+| 2026-09-25 | `erasableSyntaxOnly` on (no enums or parameter properties) | Shared TS must run under Node's type stripping (scripts), Deno and vitest alike |
+| 2026-09-25 | Zones draw through core's `Painter` interface, never PixiJS directly | Zones stay renderer-agnostic and Deno-importable; the web app supplies `PixiPainter` and `canvasPainter` |
+| 2026-09-25 | Renderer draws the scene in art pixels into a nearest-filtered RenderTexture, then scales it by an integer factor | Reproduces the prototype's pixel look exactly; labels are screen-space Pixi Text so they stay crisp |
+| 2026-09-25 | Simulated crowd only behind `?sim=N`, labelled "Simulated crowd", never mixed with real people | Needed to see festivals before 50 real users exist; people-first means no fake crowds in the real view |
 
 ## System Map
 
@@ -49,11 +56,14 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Supabase clients:** `apps/web/lib/supabase/{server,admin,proxy}.ts`. Admin (service role) is server-only.
 - **DB types:** `apps/web/lib/database.types.ts`, regenerated with `supabase gen types typescript --linked --schema public`.
 - **RLS smoke test:** `apps/web/scripts/rls-smoke.mjs`. Run it after any migration. 18 checks against the live project; cleans up its test users.
-- **Core:** `packages/core`. Plug-in contracts, `tierOf`, adaptive `schedule`, `RateGate`, and `pickZone`/`matchTags`, all with tests. World logic port is step 6.
+- **Core:** `packages/core`. Plug-in contracts, `tierOf`, `schedule`, `RateGate`, `pickZone`/`matchTags`, and the World model, all with tests (67 in the repo).
 - **Sources:** `packages/sources/src/lastfm/`: `auth.ts` (web auth), `api.ts` (now-playing and top tags, 429/code-29 handling), and `poller.ts` (`runPollCycle`, pure with an injected store). Tested, including a 150-account rate simulation.
 - **Poller:** `supabase/functions/poller/`, a thin Deno wrapper. Deploy with `supabase functions deploy poller --use-api --no-verify-jwt`. pg_cron job `earshot-poller` runs every 30 s; `earshot-cron-history-cleanup` runs hourly. Check health through `net._http_response` (each run returns its stats JSON). Logs: `poller <event>` lines.
-- **Genre mapper:** `zones/*/src/claims.ts` (tag lists), `zones/registry.ts`, `zones/overrides.json`. Scoring is in `packages/core/src/zones.ts`.
-- **Zones:** `zones/*`. Tag claims only; layouts and renderers come in step 6.
+- **Genre mapper:** `zones/*/src/claims.ts` (tag lists), `zones/registry.ts` (`mapTags`: threshold + tag weights), `zones/overrides.json`. Scoring is in `packages/core/src/zones.ts`. Re-map cached artists with `apps/web/scripts/remap-artists.ts [--dry-run]`.
+- **World model:** `packages/core/src/world.ts` (`World.update(participants)` → venues, slots, stage item, placements), plus `iso.ts`, `painter.ts`, `person.ts` and `rng.ts`.
+- **Metal zone:** `zones/metal/src/{layout,scenery,venues,claims}.ts`; `createZone()` returns the `ZonePlugin`.
+- **Renderer:** `apps/web/lib/world/renderer.ts` (PixiJS), with `painters.ts`, `canvas-painter.ts`, `sim.ts` and `zones.ts` (the client zone registry). The page is `apps/web/app/z/[zone]/`.
+- **Zones:** `zones/metal` is the full plug-in. `indie`, `folk` and `outskirts` have tag claims only; their worlds come in step 8.
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
@@ -63,10 +73,18 @@ _(nothing yet)_
 
 ## Open Questions
 
-- Custom SMTP provider for magic links before inviting friends (Resend?). Which sender domain?
 - Realtime per-zone channels: a `postgres_changes` filter on `zone_id` won't tell the old zone when someone moves zones. Broadcast vs. filter is decided in step 7.
+- Where slot assignment runs. `presence.spot` (stage/field/plaza) depends on slots, but slots carry hysteresis, so clients that joined at different times could disagree. Option A: the server runs `World` each poll cycle and writes the spot (and maybe the slot). Option B: clients run `World` from a snapshot. Decide in step 7.
+- Custom SMTP provider for magic links before inviting friends (Resend?), and the sender domain.
 
 ## Session Log
+
+### 2026-09-25 — Mapper fix + step 6 (world port, PixiJS)
+**Did:** Genre mapper: added a confidence threshold and generic-tag weights, moved the policy to `registry.mapTags`, re-mapped cached artists (Beastie Boys → outskirts), and redeployed the poller. Step 6: core World model plus iso/painter/person/rng; the Forge as the Metal plug-in (seeded map identical to the prototype); the PixiJS renderer and the `/z/[zone]` view with inspector, venues and ladder; the avatar preview now uses core's `drawPerson`. Verified in the browser at desktop and phone widths, and on earshot.world.
+**Decided:** See the Decisions Log rows from "Genre policy lives in" onwards.
+**Gotchas:** (1) Node's type stripping rejects parameter properties, hence `erasableSyntaxOnly`. (2) The in-app browser's click coordinates are in the screenshot's own frame, not the viewport's.
+**State after:** `/z/metal?sim=130` shows the full Forge. The real `/z/metal` is empty until step 7.
+**Next:** Step 7, realtime presence.
 
 ### 2026-09-25 — Last.fm connect fix + step 5 (poller, genre mapper)
 **Did:** Fixed the Last.fm callback: the strict token regex rejected real tokens. Added permanent per-exit logging, and Jeff connected as MightyZaino. Built the poller: core schedule, rate gate and zone scoring; the sources API and poll loop; zone claims, registry and overrides; three migrations (poll columns + lease RPC, cron job, cron-history cleanup); the Edge Function with secrets in Vault and function secrets. 45 tests pass, including 150 simulated accounts at ≤4 req/s. Found and fixed a 60 s real cadence caused by cron jitter.
