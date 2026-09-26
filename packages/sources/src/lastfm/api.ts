@@ -38,11 +38,35 @@ export function normalizeKey(s: string): string {
   return s.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+/** Words that mark a release variant of the same song, not a different song. */
+const VARIANT = /\b(re-?master(ed)?|live|deluxe|radio edit|edit|mono|stereo|version|bonus( track)?|explicit|clean|single|album|anniversary|expanded|edition|demo|acoustic)\b/i;
+const FEAT = /^(feat\.?|ft\.?|featuring|with)\s/i;
+
+/**
+ * Stage-song key: variants of one song compare equal. Case-insensitive; drops bracketed or dashed
+ * variant suffixes ("(Remastered)", "- Remastered 2008", "(Live)", "(Deluxe)", "(Radio Edit)"),
+ * featured artists, punctuation and extra whitespace. Display keeps the original title.
+ */
+export function songKey(title: string): string {
+  let t = title.normalize("NFKC").toLowerCase();
+  // Bracketed groups that are features or variants: "(feat. X)", "[Remastered 2011]", "(Live at …)".
+  t = t.replace(/[([]([^)\]]*)[)\]]/g, (m, inner: string) => (FEAT.test(inner.trim()) || VARIANT.test(inner) ? " " : m));
+  // Dashed suffixes, from the end, while they're variants or features: "- Remastered 2008", "- Live".
+  const parts = t.split(/\s+[-–—]\s+/);
+  while (parts.length > 1 && (VARIANT.test(parts[parts.length - 1]!) || FEAT.test(parts[parts.length - 1]!.trim()))) parts.pop();
+  t = parts.join(" ");
+  // A bare "feat. X" / "ft. X" / "featuring X" tail.
+  t = t.replace(/\s(feat\.?|ft\.?|featuring)\s.*$/, "");
+  // Punctuation: apostrophes vanish ("don't" → "dont"), everything else becomes a space.
+  t = t.replace(/['’`]/g, "").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  return t || normalizeKey(title);
+}
+
 export interface NowPlaying {
   artist: string;
   title: string;
   artistKey: string;
-  /** artistKey|normalized title */
+  /** artistKey|songKey(title): what the stage song is grouped by */
   itemKey: string;
 }
 
@@ -65,7 +89,7 @@ export function parseNowPlaying(json: unknown): NowPlaying | null {
   const title = (t.name ?? "").trim();
   if (!artist || !title) return null;
   const artistKey = normalizeKey(artist);
-  return { artist, title, artistKey, itemKey: `${artistKey}|${normalizeKey(title)}` };
+  return { artist, title, artistKey, itemKey: `${artistKey}|${songKey(title)}` };
 }
 
 export async function getNowPlaying(username: string, apiKey: string, fetchImpl?: typeof fetch): Promise<NowPlaying | null> {
