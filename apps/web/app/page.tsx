@@ -12,7 +12,9 @@ export default function Home() {
   return (
     <main className="hold">
       <h1 className="brand">
-        EAR<span>SHOT</span>
+        <Link href="/world" aria-label="Earshot: go to the world">
+          EAR<span>SHOT</span>
+        </Link>
       </h1>
       <p className="lede">
         A pixel-art music world. Link Last.fm and your avatar walks to the venue of whatever you&rsquo;re playing,
@@ -28,7 +30,10 @@ export default function Home() {
       </ul>
       <p className="soon">Doors open soon.</p>
       <p>
-        <Link className="btn" href="/me">
+        <Link className="btn" href="/world">
+          Look around
+        </Link>{" "}
+        <Link className="btn ghost" href="/me">
           Get your avatar ready
         </Link>
       </p>

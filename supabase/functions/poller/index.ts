@@ -1,9 +1,11 @@
 // Last.fm poller. pg_cron POSTs here every 30 seconds with the shared x-poller-secret header.
-// All logic lives in packages/sources (runPollCycle); this file is the Supabase-backed store.
-import { RateGate } from "@earshot/core";
+// Each run: poll who's playing what (packages/sources runPollCycle), then lay out every zone and
+// write presence (packages/core syncPresence). This file is only the Supabase-backed glue.
+import { RateGate, syncPresence } from "@earshot/core";
 import { type PollerStore, runPollCycle } from "@earshot/sources/lastfm/poller";
-import { mapTags, OVERRIDES } from "@earshot/zones/registry";
-import { createClient } from "@supabase/supabase-js";
+import { FALLBACK_ZONE_ID, LAYOUTS, mapTags, OVERRIDES } from "@earshot/zones/registry";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseLayoutStore } from "./layout-store.ts";
 
 const SOURCE = "lastfm";
 const env = (name: string) => {
@@ -19,8 +21,7 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function supabaseStore(): PollerStore {
-  const db = createClient(env("SUPABASE_URL"), env("EARSHOT_SECRET_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
+function supabaseStore(db: SupabaseClient): PollerStore {
   const check = <T>(r: { data: T; error: { message: string } | null }, what: string): T => {
     if (r.error) throw new Error(`${what}: ${r.error.message}`);
     return r.data;
@@ -71,7 +72,16 @@ function supabaseStore(): PollerStore {
       );
     },
     async saveEngagement(e) {
-      const row = { user_id: e.userId, source: SOURCE, item_key: e.itemKey, title: e.title, artist: e.artist, tags: e.tags, last_seen_at: e.lastSeenAt };
+      const row = {
+        user_id: e.userId,
+        source: SOURCE,
+        item_key: e.itemKey,
+        title: e.title,
+        artist: e.artist,
+        artist_key: e.artistKey,
+        tags: e.tags,
+        last_seen_at: e.lastSeenAt,
+      };
       if (e.startedAt) {
         check(await db.from("engagements").upsert({ ...row, started_at: e.startedAt }), "saveEngagement");
       } else {
@@ -108,21 +118,37 @@ Deno.serve(async (req) => {
     log("unauthorized");
     return new Response("Unauthorized", { status: 401 });
   }
+  const db = createClient(env("SUPABASE_URL"), env("EARSHOT_SECRET_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
+  const result: Record<string, unknown> = {};
+  let ok = true;
+
   try {
     const stats = await runPollCycle({
       apiKey: env("LASTFM_API_KEY"),
-      store: supabaseStore(),
+      store: supabaseStore(db),
       mapTags,
       overrides: OVERRIDES,
       gate: new RateGate(4),
       budgetMs: 25_000,
       log,
     });
+    result.poll = stats;
     // Idle runs are the common case; only log runs that did something.
     if (stats.polled || stats.errors || stats.rateLimited) log("cycle", { ...stats });
-    return Response.json(stats);
   } catch (e) {
+    ok = false;
     log("cycle-failed", { message: e instanceof Error ? e.message : String(e) });
-    return Response.json({ error: "cycle failed" }, { status: 500 });
   }
+
+  // Lay out the world even if polling failed: hides, renames and stale engagements still apply.
+  try {
+    const layout = await syncPresence(supabaseLayoutStore(db, FALLBACK_ZONE_ID), LAYOUTS, FALLBACK_ZONE_ID);
+    result.layout = layout;
+    if (layout.upserted || layout.deleted) log("layout", { ...layout });
+  } catch (e) {
+    ok = false;
+    log("layout-failed", { message: e instanceof Error ? e.message : String(e) });
+  }
+
+  return Response.json(result, { status: ok ? 200 : 500 });
 });

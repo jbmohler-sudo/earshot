@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="hold">
-      <Link href="/" className="brand small">
+      <Link href="/world" className="brand small" aria-label="Earshot: go to the world">
         EAR<span>SHOT</span>
       </Link>
       <h1 className="h">Sign in</h1>

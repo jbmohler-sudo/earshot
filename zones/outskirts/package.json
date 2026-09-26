@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./claims": "./src/claims.ts"
+    "./claims": "./src/claims.ts",
+    "./layout": "./src/layout.ts"
   },
   "scripts": {
     "typecheck": "tsc -p ."

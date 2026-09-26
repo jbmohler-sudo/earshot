@@ -41,6 +41,8 @@ body {
   letter-spacing: 0.06em;
 }
 .brand span { color: var(--ember); }
+.brand a { color: inherit; text-decoration: none; }
+.card.enter { gap: 8px; }
 .lede { margin: 0; color: var(--bone); }
 .ladder {
   list-style: none;
@@ -160,6 +162,17 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   border: 1px solid var(--line);
   padding: 3px 8px;
 }
+.you-link {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--bone);
+  border: 1px solid var(--line);
+  padding: 3px 10px;
+  text-decoration: none;
+}
+.you-link:hover { border-color: var(--ember); }
+.proto + .you-link { margin-left: 0; }
 .zone-stage { position: relative; min-height: 0; border: 1px solid var(--line); background: #0b0808; overflow: hidden; }
 .zone-canvas { position: absolute; inset: 0; }
 .zone-canvas canvas { image-rendering: pixelated; }

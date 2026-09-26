@@ -1,16 +1,17 @@
 // PixiJS world renderer. The zone draws in art pixels (through PixiPainter) into a low-res
 // RenderTexture, which is shown scaled up with nearest-neighbour filtering: the prototype's pixel look.
-// Layout decisions come from core's World; this file only animates and draws them.
-import { drawPerson, type Frame, makeIso, type Participant, type TilePoint, World, type ZonePlugin } from "@earshot/core";
+// The layout (who stands at which spot) arrives as a Scene; this file only animates and draws it.
+import { drawPerson, type Frame, makeIso, spotFor, spotJitter, type TilePoint, type ZonePlugin } from "@earshot/core";
 import { Application, Container, RenderTexture, Sprite, Text, TextStyle } from "pixi.js";
 import { PixiPainter } from "./painters";
-import type { PersonSummary, PersonView, Selection, VenueSummary } from "./types";
+import type { PlacedPerson, Scene, SceneVenue } from "./scene";
+import type { PersonSummary, Selection } from "./types";
 
 export const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
 const WALK_SPEED = 2.3; // tiles per second
 
 interface Walker {
-  view: PersonView;
+  view: PlacedPerson;
   x: number;
   y: number;
   tx: number;
@@ -31,7 +32,6 @@ export interface RendererOptions {
 export class WorldRenderer {
   private readonly app: Application;
   private readonly zone: ZonePlugin;
-  private readonly world: World;
   private readonly iso: ReturnType<typeof makeIso>;
   private readonly host: HTMLElement;
   private readonly opts: RendererOptions;
@@ -44,8 +44,9 @@ export class WorldRenderer {
   private readonly labels = new Container();
   private readonly venueLabels = new Map<string, { box: Text; sub: Text }>();
   private readonly tags = new Map<string, Text>();
-  private plazaLabel: Text;
+  private readonly plazaLabel: Text;
 
+  private layout: Scene = { people: [], venues: [] };
   private walkers = new Map<string, Walker>();
   private selection: Selection = null;
   private followId: string | null = null;
@@ -74,7 +75,6 @@ export class WorldRenderer {
     this.host = host;
     this.zone = zone;
     this.opts = opts;
-    this.world = new World(zone.layout);
     this.iso = makeIso(zone.layout.origin);
 
     const css = getComputedStyle(document.documentElement);
@@ -116,14 +116,14 @@ export class WorldRenderer {
     this.rt.destroy(true);
   }
 
-  // ---------------------------------------------------------------- people
+  // ---------------------------------------------------------------- scene
 
-  /** Replace the crowd. `initial` places everyone at their spot instantly (first load). */
-  setPeople(people: PersonView[], initial = false): void {
-    const participants: Participant[] = people.map((p) => ({ id: p.id, groupKey: p.groupKey, itemKey: p.itemKey }));
-    this.world.update(participants, initial);
+  /** Show a new layout. `initial` places everyone at their spot instantly (first load). */
+  setScene(scene: Scene, initial = false): void {
+    this.layout = scene;
+    const tierOf = new Map(scene.venues.map((v) => [v.groupKey, v.tier]));
     const present = new Set<string>();
-    for (const p of people) {
+    for (const p of scene.people) {
       present.add(p.id);
       let w = this.walkers.get(p.id);
       if (!w) {
@@ -133,9 +133,9 @@ export class WorldRenderer {
       }
       w.view = p;
       w.leaving = false;
-      const pl = this.world.placement(p.id)!;
-      if (pl.target) {
-        [w.tx, w.ty] = pl.target;
+      const at = p.slot === null ? undefined : this.zone.layout.slots[p.slot];
+      if (p.kind !== "plaza" && at && p.index !== null) {
+        [w.tx, w.ty] = spotFor(at, tierOf.get(p.groupKey) ?? "busker", p.kind, p.index, spotJitter(p.id), this.zone.layout.bounds);
       } else if (w.plazaWait <= 0 || !this.inPlaza(w.tx, w.ty)) {
         [w.tx, w.ty] = this.plazaSpot();
         w.plazaWait = 2 + Math.random() * 4;
@@ -155,34 +155,20 @@ export class WorldRenderer {
 
   // ---------------------------------------------------------------- queries for the side panel
 
-  venues(): VenueSummary[] {
-    const people = [...this.walkers.values()].filter((w) => !w.leaving);
-    return this.world.activeVenues().map((v) => {
-      const members = people.filter((w) => w.view.groupKey === v.groupKey);
-      const stage = members.find((w) => w.view.itemKey === v.stageItem);
-      return {
-        groupKey: v.groupKey,
-        groupName: members[0]?.view.groupName ?? v.groupKey,
-        count: v.count,
-        tier: v.tier,
-        slotted: v.slot >= 0,
-        stageTitle: stage?.view.itemTitle ?? null,
-        front: members.filter((w) => this.world.placement(w.view.id)?.kind === "front").length,
-      };
-    });
+  venues(): SceneVenue[] {
+    return this.layout.venues;
   }
 
   person(id: string): PersonSummary | null {
     const w = this.walkers.get(id);
     if (!w) return null;
-    const pl = this.world.placement(id);
-    const v = this.world.venues.get(w.view.groupKey);
+    const v = this.layout.venues.find((x) => x.groupKey === w.view.groupKey);
     const tier = v ? TIER_LABEL[v.tier].toLowerCase() : "";
     const where = w.leaving
       ? "heading out"
-      : !pl || pl.kind === "plaza"
+      : w.view.kind === "plaza"
         ? "in the plaza, waiting for a stage"
-        : pl.kind === "front"
+        : w.view.kind === "front"
           ? `front rows at the ${tier}`
           : `in the field at the ${tier}`;
     return { id, name: w.view.name, groupName: w.view.groupName, itemTitle: w.view.itemTitle, you: !!w.view.you, where };
@@ -195,11 +181,13 @@ export class WorldRenderer {
     this.followId = null;
     if (!focus || !sel) return;
     if (sel.type === "venue") {
-      const v = this.world.venues.get(sel.groupKey);
-      if (v && v.slot >= 0) {
-        const [sx, sy] = this.zone.layout.slots[v.slot]!;
-        this.centerOn(sx + 1.5, sy + 1.5);
-      } else this.centerOn((this.zone.layout.plaza.x0 + this.zone.layout.plaza.x1) / 2, (this.zone.layout.plaza.y0 + this.zone.layout.plaza.y1) / 2);
+      const v = this.layout.venues.find((x) => x.groupKey === sel.groupKey);
+      const at = v?.slot != null ? this.zone.layout.slots[v.slot] : undefined;
+      if (at) this.centerOn(at[0] + 1.5, at[1] + 1.5);
+      else {
+        const pz = this.zone.layout.plaza;
+        this.centerOn((pz.x0 + pz.x1) / 2, (pz.y0 + pz.y1) / 2);
+      }
     } else {
       this.followId = sel.id;
     }
@@ -255,6 +243,10 @@ export class WorldRenderer {
 
   // ---------------------------------------------------------------- frame
 
+  private slotted(): (SceneVenue & { slot: number })[] {
+    return this.layout.venues.filter((v): v is SceneVenue & { slot: number } => v.slot !== null && !!this.zone.layout.slots[v.slot]);
+  }
+
   private frame(dt: number): void {
     this.t += dt;
     const f: Frame = { t: this.t, dt, motion: !this.opts.reducedMotion };
@@ -279,7 +271,7 @@ export class WorldRenderer {
     this.zone.scenery.underlay?.(p, f);
     const items: { d: number; draw: () => void }[] = [];
     for (const prop of this.zone.scenery.props) items.push({ d: prop.depth, draw: () => prop.draw(p, f) });
-    const slotted = this.world.activeVenues().filter((v) => v.slot >= 0);
+    const slotted = this.slotted();
     for (const v of slotted) {
       const at = this.zone.layout.slots[v.slot]!;
       items.push({ d: at[0] + at[1], draw: () => this.zone.venueStyles[v.tier].draw(p, { slot: v.slot, at, tier: v.tier, count: v.count }, f) });
@@ -315,10 +307,9 @@ export class WorldRenderer {
     let bob = 0;
     let walk = 0;
     let arms = false;
-    const pl = this.world.placement(w.view.id);
     if (w.moving) walk = Math.sin(w.walkT * 14) > 0 ? 1 : -1;
-    else if (f.motion && pl && pl.kind !== "plaza" && !w.leaving) {
-      const front = pl.kind === "front";
+    else if (f.motion && w.view.kind !== "plaza" && !w.leaving) {
+      const front = w.view.kind === "front";
       bob = Math.sin(f.t * (front ? w.tempo + 2 : w.tempo * 0.6) + w.phase) > 0.3 ? 1 : 0;
       arms = front && Math.sin(f.t * 0.7 + w.phase * 3) > 0.55;
     }
@@ -345,7 +336,7 @@ export class WorldRenderer {
           if (this.selection?.type === "person" && this.selection.id === id) this.opts.onSelect?.(null);
           continue;
         }
-        if (this.world.placement(id)?.kind === "plaza") {
+        if (w.view.kind === "plaza") {
           w.plazaWait -= dt;
           if (w.plazaWait <= 0) {
             [w.tx, w.ty] = this.plazaSpot();
@@ -365,13 +356,10 @@ export class WorldRenderer {
     return t;
   }
 
-  private drawLabels(slotted: ReturnType<World["activeVenues"]>): void {
+  private drawLabels(slotted: (SceneVenue & { slot: number })[]): void {
     const toScreen = (lx: number, ly: number) => [this.camX + lx * this.S, this.camY + ly * this.S] as const;
-    const summaries = new Map(this.venues().map((v) => [v.groupKey, v]));
     const seen = new Set<string>();
     for (const v of slotted) {
-      const s = summaries.get(v.groupKey);
-      if (!s) continue;
       seen.add(v.groupKey);
       let lbl = this.venueLabels.get(v.groupKey);
       if (!lbl) {
@@ -383,9 +371,9 @@ export class WorldRenderer {
       const [sx, sy] = this.zone.layout.slots[v.slot]!;
       const [lx, ly] = this.iso(sx, sy);
       const [x, y] = toScreen(lx, ly - this.zone.venueStyles[v.tier].labelLift - 8);
-      lbl.box.text = s.groupName.toUpperCase();
+      lbl.box.text = v.groupName.toUpperCase();
       lbl.box.style.fontSize = big ? 15 : 11;
-      lbl.sub.text = v.tier === "busker" ? "1 here" : `${v.count} here · ♪ ${s.stageTitle ?? ""}`;
+      lbl.sub.text = v.tier === "busker" ? `1 here${v.stageTitle ? ` · ♪ ${v.stageTitle}` : ""}` : `${v.count} here · ♪ ${v.stageTitle ?? ""}`;
       lbl.sub.style.fontSize = big ? 12 : 10;
       const selected = this.selection?.type === "venue" && this.selection.groupKey === v.groupKey;
       lbl.box.style.fill = selected ? "#ffb347" : "#efe4d6";
@@ -401,7 +389,7 @@ export class WorldRenderer {
     }
 
     // Plaza count.
-    const waiting = [...this.walkers.values()].filter((w) => !w.leaving && this.world.placement(w.view.id)?.kind === "plaza").length;
+    const waiting = [...this.walkers.values()].filter((w) => !w.leaving && w.view.kind === "plaza").length;
     const pz = this.zone.layout.plaza;
     const [plx, ply] = this.iso((pz.x0 + pz.x1) / 2, (pz.y0 + pz.y1) / 2);
     const [px, py] = toScreen(plx, ply - 20);
@@ -498,8 +486,7 @@ export class WorldRenderer {
     if (hit) sel = { type: "person", id: hit.view.id };
     else {
       let best = Infinity;
-      for (const v of this.world.activeVenues()) {
-        if (v.slot < 0) continue;
+      for (const v of this.slotted()) {
         const [sx, sy] = this.zone.layout.slots[v.slot]!;
         const [cx, cy] = this.iso(sx, sy);
         const d = Math.hypot(lx - cx, ly - (cy - 8));
@@ -533,4 +520,3 @@ export class WorldRenderer {
     return x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1;
   }
 }
-

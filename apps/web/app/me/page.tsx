@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { parseAvatar } from "@/lib/avatar";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { currentZone } from "@/lib/world/where";
+import { ZONES } from "@/lib/world/zones";
 import { ProfileForm } from "./profile-form";
 import { VisibilityToggle } from "./visibility-toggle";
 
@@ -32,17 +34,31 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
     .eq("source", "lastfm")
     .maybeSingle();
   const flash = LASTFM_MESSAGES[(await searchParams).lastfm ?? ""];
+  const zone = await currentZone(auth.user.id);
 
   return (
     <main className="hold wide">
       <header className="topbar">
-        <Link href="/" className="brand small">
+        <Link href="/world" className="brand small" aria-label="Earshot: go to the world">
           EAR<span>SHOT</span>
         </Link>
         <form action="/auth/signout" method="post">
           <button className="btn ghost">Sign out</button>
         </form>
       </header>
+
+      <section className="card enter">
+        <div>
+          <a className="btn" href="/world">
+            Enter the world
+          </a>
+        </div>
+        <p className="note">
+          {profile?.visible === false
+            ? `You're hidden, so you'll look around without an avatar. Takes you to ${ZONES[zone]!.name}.`
+            : `Takes you to ${ZONES[zone]!.name}.`}
+        </p>
+      </section>
 
       <section className="card stack">
         <h2>Last.fm</h2>

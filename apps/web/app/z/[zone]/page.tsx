@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { isZoneId, ZONES } from "@/lib/world/zones";
 import { ZoneView } from "./zone-view";
 
@@ -16,5 +17,7 @@ export default async function ZonePage({ params, searchParams }: { params: Promi
   const { sim } = await searchParams;
   // ?sim=N shows a simulated crowd of N (20–260) instead of real people. For development and demos.
   const simSize = sim === undefined ? null : Math.max(20, Math.min(260, Number.parseInt(sim, 10) || 130));
-  return <ZoneView zoneId={zone} simSize={simSize} />;
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  return <ZoneView zoneId={zone} simSize={simSize} viewerId={data.user?.id ?? null} />;
 }

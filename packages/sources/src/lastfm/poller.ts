@@ -29,6 +29,7 @@ export interface EngagementWrite {
   itemKey: string;
   title: string;
   artist: string;
+  artistKey: string;
   tags: string[];
   /** Set only when the item changed; otherwise the existing start time is kept. */
   startedAt?: string;
@@ -206,6 +207,7 @@ export async function runPollCycle(o: PollerOptions): Promise<CycleStats> {
           itemKey: np.itemKey,
           title: np.title,
           artist: np.artist,
+          artistKey: np.artistKey,
           tags: artist?.tags ?? [],
           startedAt: changed ? iso(t) : undefined,
           lastSeenAt: iso(t),

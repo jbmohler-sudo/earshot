@@ -1,7 +1,12 @@
 // The genre mapper: every zone that claims tags, the fallback, the mapping policy, and contributor
-// overrides (artist key -> zone id). Imported by the poller (Deno), scripts and tests, so only
-// claims.ts files belong here, never renderers.
+// overrides (artist key -> zone id), and every zone's layout. Imported by the poller (Deno), scripts
+// and tests, so only pure-data claims.ts and layout.ts files belong here, never renderers.
+import type { ZoneLayout } from "../packages/core/src/contracts.ts";
 import { pickZone, type ZonePick, type WeightedTag } from "../packages/core/src/zones.ts";
+import { layout as folkLayout } from "./folk/src/layout.ts";
+import { layout as indieLayout } from "./indie/src/layout.ts";
+import { layout as metalLayout } from "./metal/src/layout.ts";
+import { layout as outskirtsLayout } from "./outskirts/src/layout.ts";
 import * as folk from "./folk/src/claims.ts";
 import * as indie from "./indie/src/claims.ts";
 import * as metal from "./metal/src/claims.ts";
@@ -12,6 +17,14 @@ export const CLAIMING_ZONES = [metal, indie, folk];
 export const FALLBACK_ZONE_ID = outskirts.id;
 export const ZONE_IDS = [metal.id, indie.id, folk.id, outskirts.id];
 export const OVERRIDES: Record<string, string> = overrides;
+
+/** Every zone's layout (pure data), for server-side presence layout. */
+export const LAYOUTS: Record<string, ZoneLayout> = {
+  [metal.id]: metalLayout,
+  [indie.id]: indieLayout,
+  [folk.id]: folkLayout,
+  [outskirts.id]: outskirtsLayout,
+};
 
 /** A zone must hold at least this share of an artist's weighted tags, or the artist goes to the Outskirts. */
 export const MIN_CONFIDENCE = 0.35;

@@ -1,6 +1,7 @@
 export * from "./contracts.ts";
 export * from "./iso.ts";
 export * from "./painter.ts";
+export * from "./presence-sync.ts";
 export * from "./person.ts";
 export * from "./rate-gate.ts";
 export * from "./rng.ts";

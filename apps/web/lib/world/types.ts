@@ -1,4 +1,4 @@
-import type { Look, Tier } from "@earshot/core";
+import type { Look } from "@earshot/core";
 
 /** One person as the world view needs them: identity, look, and what they're engaged with. */
 export interface PersonView {
@@ -14,16 +14,6 @@ export interface PersonView {
 }
 
 export type Selection = { type: "person"; id: string } | { type: "venue"; groupKey: string } | null;
-
-export interface VenueSummary {
-  groupKey: string;
-  groupName: string;
-  count: number;
-  tier: Tier;
-  slotted: boolean;
-  stageTitle: string | null;
-  front: number;
-}
 
 export interface PersonSummary {
   id: string;

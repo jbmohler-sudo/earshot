@@ -43,8 +43,8 @@ try {
 
   await admin.from("source_accounts").insert({ user_id: a.id, source: "lastfm", external_username: `rls_${stamp}`, session_key: "SECRET" });
   await admin.from("presence").insert([
-    { user_id: a.id, zone_id: "metal", artist_key: "metallica", spot: "stage" },
-    { user_id: b.id, zone_id: "metal", artist_key: "metallica", spot: "field" },
+    { user_id: a.id, zone_id: "metal", artist_key: "metallica", spot: "stage", slot: 0, spot_index: 0 },
+    { user_id: b.id, zone_id: "metal", artist_key: "metallica", spot: "field", slot: 0, spot_index: 0 },
   ]);
   await admin.from("engagements").insert({ user_id: a.id, source: "lastfm", item_key: "metallica|one", title: "One", artist: "Metallica" });
 
@@ -56,6 +56,7 @@ try {
   check(denied(await anon.from("source_accounts").select("*")), "anon cannot read source_accounts");
   check(denied(await anon.from("artist_zones").select("*")), "anon cannot read artist_zones");
   check(denied(await anon.from("presence").insert({ user_id: a.id, zone_id: "x", artist_key: "x", spot: "plaza" })), "anon cannot write presence");
+  check(denied(await anon.from("zone_state").select("*")), "anon cannot read zone_state");
   r = await anon.rpc("is_visible", { uid: a.id });
   check(!!r.error, "is_visible is not callable over the API");
 

@@ -3,51 +3,75 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorldRenderer } from "@/lib/world/renderer";
-import type { PersonSummary, Selection, VenueSummary } from "@/lib/world/types";
+import type { SceneVenue } from "@/lib/world/scene";
+import type { PersonSummary, Selection } from "@/lib/world/types";
 import { ZONES } from "@/lib/world/zones";
 
 const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
 const TIER_CHIP = { busker: "", tavern: "t-tavern", amph: "t-amph", fest: "t-fest" } as const;
 
-export function ZoneView({ zoneId, simSize }: { zoneId: string; simSize: number | null }) {
+export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSize: number | null; viewerId: string | null }) {
   const host = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null);
-  const [venues, setVenues] = useState<VenueSummary[]>([]);
+  const [venues, setVenues] = useState<SceneVenue[]>([]);
+  const [live, setLive] = useState(simSize !== null);
   const [selection, setSelection] = useState<Selection>(null);
   const [person, setPerson] = useState<PersonSummary | null>(null);
   const [following, setFollowing] = useState<string | null>(null);
   const zone = ZONES[zoneId]!;
 
-  // Boot the renderer (client only) and, in sim mode, drive it with a simulated crowd.
+  // Boot the renderer (client only), then feed it either live presence or a simulated crowd.
   useEffect(() => {
     let cancelled = false;
-    let stopSim = () => {};
+    let stop = () => {};
     (async () => {
-      const [{ WorldRenderer }, { CrowdSim }] = await Promise.all([import("@/lib/world/renderer"), import("@/lib/world/sim")]);
+      const [{ WorldRenderer }, scene, { World }] = await Promise.all([
+        import("@/lib/world/renderer"),
+        import("@/lib/world/scene"),
+        import("@earshot/core"),
+      ]);
       if (cancelled || !host.current) return;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const r = await WorldRenderer.create(host.current, zone.create(), { reducedMotion, onSelect: (sel) => setSelection(sel) });
+      const plugin = zone.create();
+      const r = await WorldRenderer.create(host.current, plugin, { reducedMotion, onSelect: (sel) => setSelection(sel) });
       if (cancelled) return r.destroy();
       renderer.current = r;
+
       if (simSize !== null) {
+        // Sim: lay the crowd out locally with the same core World the server uses.
+        const { CrowdSim } = await import("@/lib/world/sim");
         const sim = new CrowdSim(simSize);
-        r.setPeople(sim.people(), true);
+        const world = new World(plugin.layout);
+        r.setScene(scene.sceneFromWorld(world, sim.people(), true), true);
         let last = performance.now();
         const id = window.setInterval(() => {
           const now = performance.now();
-          if (sim.step((now - last) / 1000)) r.setPeople(sim.people());
+          if (sim.step((now - last) / 1000)) r.setScene(scene.sceneFromWorld(world, sim.people()));
           last = now;
         }, 400);
-        stopSim = () => window.clearInterval(id);
+        stop = () => window.clearInterval(id);
+      } else {
+        // Live: the server lays everyone out; mirror its presence rows.
+        const { subscribeZone } = await import("@/lib/world/presence-feed");
+        let foundYou = false;
+        stop = subscribeZone(zoneId, (rows, initial) => {
+          r.setScene(scene.sceneFromPresence(rows, viewerId), initial);
+          setLive(true);
+          if (!foundYou && viewerId && rows.some((x) => x.user_id === viewerId)) {
+            foundYou = true; // follow yourself the first time you show up
+            r.select({ type: "person", id: viewerId }, true);
+            setSelection({ type: "person", id: viewerId });
+          }
+        });
       }
     })();
     return () => {
       cancelled = true;
-      stopSim();
+      stop();
       renderer.current?.destroy();
       renderer.current = null;
     };
-  }, [zone, simSize]);
+  }, [zone, zoneId, simSize, viewerId]);
 
   // The side panel reads the renderer twice a second.
   useEffect(() => {
@@ -74,17 +98,20 @@ export function ZoneView({ zoneId, simSize }: { zoneId: string; simSize: number 
   return (
     <div className="zone-app">
       <header className="zone-bar">
-        <Link href="/" className="brand small">
+        <Link href="/world" className="brand small" aria-label="Earshot: go to the world">
           EAR<span>SHOT</span>
         </Link>
         <div className="zone-name">{zone.name}</div>
         <div className="live">{total} listening now</div>
         {simSize !== null && <div className="proto">Simulated crowd</div>}
+        <Link href={viewerId ? "/me" : "/login"} className="you-link">
+          {viewerId ? "You" : "Sign in"}
+        </Link>
       </header>
 
       <main className="zone-stage">
         <div ref={host} className="zone-canvas" />
-        {simSize === null && total === 0 && (
+        {simSize === null && live && total === 0 && (
           <div className="zone-empty">
             Nobody&rsquo;s here right now. <Link href="/me">Connect Last.fm</Link> and play something heavy.
           </div>
@@ -128,9 +155,9 @@ export function ZoneView({ zoneId, simSize }: { zoneId: string; simSize: number 
             <>
               <div className="who">{venue.groupName}</div>
               <div className="row">
-                <span className={`chip ${venue.slotted ? TIER_CHIP[venue.tier] : "t-wait"}`}>{venue.slotted ? TIER_LABEL[venue.tier] : "No stage yet"}</span>
+                <span className={`chip ${venue.slot !== null ? TIER_CHIP[venue.tier] : "t-wait"}`}>{venue.slot !== null ? TIER_LABEL[venue.tier] : "No stage yet"}</span>
               </div>
-              {venue.slotted ? (
+              {venue.slot !== null ? (
                 <>
                   <div>
                     <div className="track">♪ {venue.stageTitle}</div>
@@ -159,7 +186,7 @@ export function ZoneView({ zoneId, simSize }: { zoneId: string; simSize: number 
                 <li key={v.groupKey}>
                   <button className={venue?.groupKey === v.groupKey ? "on" : ""} onClick={() => choose({ type: "venue", groupKey: v.groupKey }, true)}>
                     <span className="vname">{v.groupName}</span>
-                    <span className={`chip ${v.slotted ? TIER_CHIP[v.tier] : "t-wait"}`}>{v.slotted ? TIER_LABEL[v.tier] : "No stage yet"}</span>
+                    <span className={`chip ${v.slot !== null ? TIER_CHIP[v.tier] : "t-wait"}`}>{v.slot !== null ? TIER_LABEL[v.tier] : "No stage yet"}</span>
                     <span className="vcount">{v.count}</span>
                     <span className="meter">
                       <i style={{ width: `${((v.count / max) * 100).toFixed(1)}%` }} />

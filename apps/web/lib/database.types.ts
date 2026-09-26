@@ -17,19 +17,25 @@ export type Database = {
       artist_zones: {
         Row: {
           artist_key: string
+          artist_name: string | null
           confidence: number
+          tags: string[]
           updated_at: string
           zone_id: string
         }
         Insert: {
           artist_key: string
+          artist_name?: string | null
           confidence?: number
+          tags?: string[]
           updated_at?: string
           zone_id: string
         }
         Update: {
           artist_key?: string
+          artist_name?: string | null
           confidence?: number
+          tags?: string[]
           updated_at?: string
           zone_id?: string
         }
@@ -38,6 +44,7 @@ export type Database = {
       engagements: {
         Row: {
           artist: string
+          artist_key: string | null
           item_key: string
           last_seen_at: string
           source: string
@@ -48,6 +55,7 @@ export type Database = {
         }
         Insert: {
           artist: string
+          artist_key?: string | null
           item_key: string
           last_seen_at?: string
           source: string
@@ -58,6 +66,7 @@ export type Database = {
         }
         Update: {
           artist?: string
+          artist_key?: string | null
           item_key?: string
           last_seen_at?: string
           source?: string
@@ -79,21 +88,42 @@ export type Database = {
       presence: {
         Row: {
           artist_key: string
+          artist_name: string
+          avatar: Json
+          display_name: string | null
+          item_key: string
+          slot: number | null
           spot: string
+          spot_index: number | null
+          title: string
           updated_at: string
           user_id: string
           zone_id: string
         }
         Insert: {
           artist_key: string
+          artist_name?: string
+          avatar?: Json
+          display_name?: string | null
+          item_key?: string
+          slot?: number | null
           spot: string
+          spot_index?: number | null
+          title?: string
           updated_at?: string
           user_id: string
           zone_id: string
         }
         Update: {
           artist_key?: string
+          artist_name?: string
+          avatar?: Json
+          display_name?: string | null
+          item_key?: string
+          slot?: number | null
           spot?: string
+          spot_index?: number | null
+          title?: string
           updated_at?: string
           user_id?: string
           zone_id?: string
@@ -136,7 +166,9 @@ export type Database = {
         Row: {
           external_username: string
           last_changed_at: string | null
+          last_error: string | null
           last_polled_at: string | null
+          next_poll_at: string
           session_key: string
           source: string
           user_id: string
@@ -144,7 +176,9 @@ export type Database = {
         Insert: {
           external_username: string
           last_changed_at?: string | null
+          last_error?: string | null
           last_polled_at?: string | null
+          next_poll_at?: string
           session_key: string
           source: string
           user_id: string
@@ -152,7 +186,9 @@ export type Database = {
         Update: {
           external_username?: string
           last_changed_at?: string | null
+          last_error?: string | null
           last_polled_at?: string | null
+          next_poll_at?: string
           session_key?: string
           source?: string
           user_id?: string
@@ -167,12 +203,39 @@ export type Database = {
           },
         ]
       }
+      zone_state: {
+        Row: {
+          state: Json
+          updated_at: string
+          zone_id: string
+        }
+        Insert: {
+          state: Json
+          updated_at?: string
+          zone_id: string
+        }
+        Update: {
+          state?: Json
+          updated_at?: string
+          zone_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_due_accounts: {
+        Args: { p_lease_seconds: number; p_limit: number; p_source: string }
+        Returns: {
+          external_username: string
+          item_key: string
+          last_changed_at: string
+          last_seen_at: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

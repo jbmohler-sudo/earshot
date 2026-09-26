@@ -83,6 +83,14 @@ export function pickStageItem(counts: Map<string, number>, incumbent: string | n
   return bestN > 0 ? best : null;
 }
 
+/** Everything World carries between updates (slot owners, stage items, spot indices), as plain JSON. */
+export interface WorldSnapshot {
+  v: 1;
+  /** groupKey owning each slot. */
+  slots: (string | null)[];
+  venues: { g: string; stage: string | null; front: (string | null)[]; field: (string | null)[] }[];
+}
+
 export class World {
   readonly layout: ZoneLayout;
   readonly venues = new Map<string, VenueState>();
@@ -92,6 +100,44 @@ export class World {
   constructor(layout: ZoneLayout) {
     this.layout = layout;
     this.slotOwner = new Array<VenueState | null>(layout.slots.length).fill(null);
+  }
+
+  /** Restore a World from toJSON() output, so hysteresis and spot indices survive restarts. */
+  static fromJSON(layout: ZoneLayout, snap: WorldSnapshot | null | undefined): World {
+    const w = new World(layout);
+    if (!snap || snap.v !== 1) return w;
+    for (const sv of snap.venues) {
+      const v = w.venueFor(sv.g);
+      v.stageItem = sv.stage;
+      v.front = [...sv.front];
+      v.field = [...sv.field];
+    }
+    snap.slots.forEach((g, s) => {
+      if (g === null || s >= w.slotOwner.length) return;
+      const v = w.venues.get(g);
+      if (v) w.setSlot(v, s);
+    });
+    for (const v of w.venues.values()) {
+      for (const kind of ["front", "field"] as const) {
+        v[kind].forEach((id, index) => {
+          if (id !== null) w.placed.set(id, { id, groupKey: v.groupKey, kind, slot: v.slot, index, target: null, key: `${v.groupKey}|${kind}` });
+        });
+      }
+    }
+    return w;
+  }
+
+  toJSON(): WorldSnapshot {
+    const trim = (a: (string | null)[]) => {
+      let n = a.length;
+      while (n > 0 && a[n - 1] === null) n--;
+      return a.slice(0, n);
+    };
+    return {
+      v: 1,
+      slots: this.slotOwner.map((v) => v?.groupKey ?? null),
+      venues: this.activeVenues().map((v) => ({ g: v.groupKey, stage: v.stageItem, front: trim(v.front), field: trim(v.field) })),
+    };
   }
 
   placement(id: string): Placement | undefined {
