@@ -40,7 +40,7 @@ export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSiz
       if (simSize !== null) {
         // Sim: lay the crowd out locally with the same core World the server uses.
         const { CrowdSim } = await import("@/lib/world/sim");
-        const sim = new CrowdSim(simSize);
+        const sim = new CrowdSim(simSize, zone.sim);
         const world = new World(plugin.layout);
         r.setScene(scene.sceneFromWorld(world, sim.people(), true), true);
         let last = performance.now();
@@ -113,7 +113,7 @@ export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSiz
         <div ref={host} className="zone-canvas" />
         {simSize === null && live && total === 0 && (
           <div className="zone-empty">
-            Nobody&rsquo;s here right now. <Link href="/me">Connect Last.fm</Link> and play something heavy.
+            Nobody&rsquo;s here right now. <Link href="/me">Connect Last.fm</Link> and play something.
           </div>
         )}
         <div className="zone-hint">Drag to look around. Tap anyone.</div>

@@ -1,2 +1,21 @@
-// Zone plug-in. The full ZonePlugin (layout, venue renderers, emotes) lands with the world port.
+// The Folk zone: The Hollow, a forest clearing by a creek. Placeholder art.
+import type { ZonePlugin } from "@earshot/core";
+import { claims, id } from "./claims.ts";
+import { layout } from "./layout.ts";
+import { createScenery } from "./scenery.ts";
+import { createVenueStyles } from "./venues.ts";
+
 export { claims, id, TAGS } from "./claims.ts";
+
+export function createZone(): ZonePlugin {
+  return {
+    id,
+    kind: "music",
+    claims,
+    layout,
+    venueStyles: createVenueStyles(),
+    scenery: createScenery(),
+    emotes: [{ id: "stomp", label: "Stomp" }],
+    theme: { name: "The Hollow", background: "#0a100b", accent: "#e8b04a" },
+  };
+}

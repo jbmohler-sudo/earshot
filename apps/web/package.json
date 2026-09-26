@@ -12,7 +12,10 @@
   "dependencies": {
     "@earshot/core": "workspace:*",
     "@earshot/sources": "workspace:*",
+    "@earshot/zone-folk": "workspace:*",
+    "@earshot/zone-indie": "workspace:*",
     "@earshot/zone-metal": "workspace:*",
+    "@earshot/zone-outskirts": "workspace:*",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
     "next": "^16.3.6",

@@ -23,9 +23,18 @@ importers:
       '@earshot/sources':
         specifier: workspace:*
         version: link:../../packages/sources
+      '@earshot/zone-folk':
+        specifier: workspace:*
+        version: link:../../zones/folk
+      '@earshot/zone-indie':
+        specifier: workspace:*
+        version: link:../../zones/indie
       '@earshot/zone-metal':
         specifier: workspace:*
         version: link:../../zones/metal
+      '@earshot/zone-outskirts':
+        specifier: workspace:*
+        version: link:../../zones/outskirts
       '@supabase/ssr':
         specifier: ^0.12.7
         version: 0.12.7(@supabase/supabase-js@2.117.1)

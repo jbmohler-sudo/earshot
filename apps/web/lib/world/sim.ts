@@ -3,21 +3,8 @@
 import { HAIRS, lookOf, SHIRTS, SKINS } from "@/lib/avatar";
 import type { PersonView } from "./types";
 
-const ARTISTS: [name: string, weight: number, titles: string[]][] = [
-  ["Metallica", 42, ["Master of Puppets", "Enter Sandman", "Nothing Else Matters", "One", "For Whom the Bell Tolls", "Fade to Black"]],
-  ["Iron Maiden", 12, ["The Trooper", "Fear of the Dark", "Run to the Hills", "Hallowed Be Thy Name"]],
-  ["Black Sabbath", 9, ["Paranoid", "Iron Man", "War Pigs"]],
-  ["Slipknot", 8, ["Duality", "Psychosocial", "Before I Forget"]],
-  ["System of a Down", 8, ["Chop Suey!", "Toxicity", "Aerials"]],
-  ["Megadeth", 5, ["Symphony of Destruction", "Holy Wars... The Punishment Due", "Hangar 18"]],
-  ["Ghost", 4, ["Mary on a Cross", "Square Hammer"]],
-  ["Pantera", 4, ["Walk", "Cowboys from Hell", "Cemetery Gates"]],
-  ["Slayer", 3, ["Raining Blood", "Angel of Death"]],
-  ["Gojira", 3, ["Stranded", "Silvera", "Amazonia"]],
-  ["Mastodon", 2, ["Blood and Thunder", "Oblivion"]],
-  ["Judas Priest", 2, ["Painkiller", "Breaking the Law"]],
-];
-const TOTAL = ARTISTS.reduce((s, a) => s + a[1], 0);
+export type SimArtist = [name: string, weight: number, titles: string[]];
+
 const HANDLE_A = ["riff", "doom", "thrash", "grim", "iron", "void", "sludge", "blast", "ember", "crypt", "molten", "static", "black", "rust", "skull", "night", "ash", "storm"];
 const HANDLE_B = ["witch", "cat", "lord", "wolf", "maiden", "goat", "crow", "smith", "ghoul", "reaper", "rider", "kid", "hound", "monk", "fang", "bat"];
 
@@ -28,7 +15,7 @@ interface Bot {
   id: string;
   name: string;
   look: PersonView["look"];
-  artist: (typeof ARTISTS)[number];
+  artist: SimArtist;
   title: string;
   endsAt: number;
 }
@@ -42,7 +29,12 @@ export class CrowdSim {
   private t = 0;
   private churn = 0;
 
-  constructor(size: number) {
+  private readonly artists: SimArtist[];
+  private readonly total: number;
+
+  constructor(size: number, artists: SimArtist[]) {
+    this.artists = artists;
+    this.total = artists.reduce((s, a) => s + a[1], 0);
     this.target = size;
     for (let i = 0; i < size; i++) this.bots.push(this.make());
     for (const b of this.bots) b.endsAt = Math.random() * 250;
@@ -95,7 +87,7 @@ export class CrowdSim {
         shirt: Math.random() < 0.7 ? 0 : Math.floor(Math.random() * SHIRTS.length),
         long: Math.random() < 0.55,
       }),
-      artist: ARTISTS[0]!,
+      artist: this.artists[0]!,
       title: "",
       endsAt: 0,
     };
@@ -105,8 +97,8 @@ export class CrowdSim {
 
   private nextTrack(b: Bot, fresh = false): void {
     if (fresh || Math.random() >= 0.62) {
-      let r = Math.random() * TOTAL;
-      for (const a of ARTISTS) {
+      let r = Math.random() * this.total;
+      for (const a of this.artists) {
         r -= a[1];
         if (r <= 0) {
           b.artist = a;
