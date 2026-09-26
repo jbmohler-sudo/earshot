@@ -18,7 +18,7 @@
   - **Gate measurement:** `select * from private.phase1_gate;` in the dashboard SQL editor. Per user: listening days and world-visit days in the last 14, plus last visit.
   - **Sign-in:** "Sign in with Last.fm" is the primary flow (one approval creates or finds the account and lands you in the world). The email fallback is a 6-digit code typed on the same page. Sessions last 400 days (HttpOnly/Secure cookie, token refreshed by the proxy on every request; measured with `scripts/session-check.mjs`).
   - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
-- **In progress:** zone-travel transition (walk off, pixel world map hop, title card), with a reusable world-map component for Phase 2.
+  - **Zone travel:** your own avatar changing zones while you follow it plays walk-off → world-map hop → title card → walk-in (~2.5 s). Otherwise you get a toast with a Follow button. Reduced motion gets a crossfade and the title card. The world map is a reusable component for Phase 2.
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
@@ -70,6 +70,8 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Email fallback = 6-digit code typed on the same page (`otp_length = 6`, templates show `{{ .Token }}`) | No app switching |
 | 2026-09-26 | Auth cookies: HttpOnly, Secure in prod, 400-day Max-Age renewed on each refresh. The browser Supabase client is stateless (no persist/refresh). | Safari caps JS-written cookies at 7 days; HttpOnly keeps tokens away from page scripts |
 | 2026-09-26 | Zone URLs = `/<genre id>`; place names are display only. `RESERVED_PATHS` + `lib/world/zones.test.ts` keep zone ids and page folders from colliding. | Short, shareable links |
+| 2026-09-26 | Zone travel triggers from a second Realtime subscription on your own presence row (`me:<id>`). The full transition plays only when you were in the viewed zone and following yourself (`travelMode`); otherwise a toast. Phases run on timers, not rAF. | Never hijack the camera; background tabs stop animation frames |
+| 2026-09-26 | World map = `components/world-map.tsx` + `lib/world/map.ts` (Painter drawing, landmarks, dotted roads, hop), with optional clickable landmarks | Phase 2 map/teleport reuses it |
 | 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
 
 ## System Map
@@ -88,6 +90,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Server layout:** `packages/core/src/presence-sync.ts` (`syncPresence`), plus `supabase/functions/poller/layout-store.ts`. State lives in `zone_state` (server-only).
 - **Sign-in:** `app/login/` (Last.fm button + email code), `app/api/auth/lastfm/{start,callback}` (login and connect modes), `lib/lastfm-login.ts`, `lib/lastfm-identity.ts` (flow cookie, placeholder email). Local end-to-end testing: `scripts/lastfm-mock.mjs` + `LASTFM_MOCK_URL` (dev only).
 - **Session check:** `apps/web/scripts/session-check.mjs [base URL]`.
+- **Zone travel:** `components/zone-travel.tsx` (overlay, title card, arrival curtain), `components/world-map.tsx`, `lib/world/{map,travel}.ts`, renderer `depart()` plus arrival spawn, and `presence-feed.ts` `subscribeSelf`. Preview: `/<zone>?sim=40&travel=<other zone>`.
 - **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
 - **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
 - **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
@@ -109,7 +112,8 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 **Did:** "Sign in with Last.fm" as the primary login (login/connect modes, find-or-create by linked username, server-side session start); 6-digit email codes on the same page; `/me` and home lead with the Last.fm button. Stateless browser Supabase client plus HttpOnly/Secure 400-day cookies; measured in prod with `scripts/session-check.mjs` (expired access token refreshed silently, refresh token rotated). Tested every path locally against a Last.fm mock on desktop and phone: new user, returning user, existing email account matched by username, connect, taken, forged callback, wrong and right email codes. Zone URLs shortened to `/<zone id>` with permanent redirects and a reserved-path test. All test accounts deleted.
 **Gotchas:** A Vercel deploy can report Ready for the previous build while the newest is still building; check `vercel ls` before testing prod.
 **State after:** Only Jeff's account exists. Login friction is down to one approval.
-**Next:** Zone-travel transition, then step 9 invites.
+Then the zone-travel transition and the reusable world map. Verified with the sim preview (desktop and phone, reduced motion) and with a real trip through the live poller: a throwaway user moved folk → metal plays the whole thing and lands following itself; viewing another zone gives the toast and Follow works. The overlay first ran on rAF and froze in the hidden browser pane, so it moved to timers.
+**Next:** Step 9 invites.
 
 ### 2026-09-26 — Label plates, email branding, DMARC
 **Did:** Jeff verified all three genre routes. Put labels on plates above the world texture (fixes a busker label that read as hidden behind a lantern in The Hollow). Added `_dmarc` TXT `v=DMARC1; p=none;` via the Vercel CLI. Branded magic-link and confirmation templates using token_hash links, pushed with `supabase config push` (diff previewed first: templates only, SMTP untouched). Sent a test sign-in to `jbmohler+earshot-test@gmail.com`; the auth log shows it accepted with no SMTP error. Custom SMTP had already moved the email limit from 2/h to 30/h.
