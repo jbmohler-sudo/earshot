@@ -1,11 +1,16 @@
 "use client";
 
+import type { Look } from "@earshot/core";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrivalCurtain, ZoneTravel } from "@/components/zone-travel";
+import { DEFAULT_AVATAR, lookOf, parseAvatar } from "@/lib/avatar";
 import type { WorldRenderer } from "@/lib/world/renderer";
 import type { SceneVenue } from "@/lib/world/scene";
 import type { PersonSummary, Selection } from "@/lib/world/types";
-import { ZONES } from "@/lib/world/zones";
+import { travelMode } from "@/lib/world/travel";
+import { isZoneId, zoneHref, ZONES } from "@/lib/world/zones";
 
 const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
 const TIER_CHIP = { busker: "", tavern: "t-tavern", amph: "t-amph", fest: "t-fest" } as const;
@@ -15,12 +20,22 @@ export function ZoneView({
   simSize,
   viewerId,
   welcome = false,
+  arrive = false,
+  travelDemo = null,
 }: {
   zoneId: string;
   simSize: number | null;
   viewerId: string | null;
   welcome?: boolean;
+  /** Arriving from another zone: title card until ready, then walk in from the edge. */
+  arrive?: boolean;
+  /** Sim only: play the travel transition to this zone after a moment (for previews). */
+  travelDemo?: string | null;
 }) {
+  const router = useRouter();
+  const [travel, setTravel] = useState<{ from: string; to: string; look: Look } | null>(null);
+  const [toast, setToast] = useState<{ name: string; to: string } | null>(null);
+  const [arrived, setArrived] = useState(!arrive);
   const host = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null);
   const [venues, setVenues] = useState<SceneVenue[]>([]);
@@ -53,26 +68,60 @@ export function ZoneView({
         const sim = new CrowdSim(simSize, zone.sim);
         const world = new World(plugin.layout);
         r.setScene(scene.sceneFromWorld(world, sim.people(), true), true);
+        setArrived(true);
         let last = performance.now();
         const id = window.setInterval(() => {
           const now = performance.now();
           if (sim.step((now - last) / 1000)) r.setScene(scene.sceneFromWorld(world, sim.people()));
           last = now;
         }, 400);
-        stop = () => window.clearInterval(id);
+        const demo = travelDemo && isZoneId(travelDemo) && travelDemo !== zoneId ? travelDemo : null;
+        const demoTimer = demo ? window.setTimeout(() => setTravel({ from: zoneId, to: demo, look: lookOf(DEFAULT_AVATAR) }), 1500) : 0;
+        stop = () => {
+          window.clearInterval(id);
+          window.clearTimeout(demoTimer);
+        };
       } else {
         // Live: the server lays everyone out; mirror its presence rows.
-        const { subscribeZone } = await import("@/lib/world/presence-feed");
+        const { currentSelfZone, subscribeSelf, subscribeZone } = await import("@/lib/world/presence-feed");
         let foundYou = false;
-        stop = subscribeZone(zoneId, (rows, initial) => {
-          r.setScene(scene.sceneFromPresence(rows, viewerId), initial);
+        // Where your own avatar is, so a move to another zone can be told apart from other changes.
+        let selfZone: string | null = null;
+        const stopZone = subscribeZone(zoneId, (rows, initial) => {
+          r.setScene(scene.sceneFromPresence(rows, viewerId), initial, initial && arrive ? viewerId : null);
           setLive(true);
-          if (!foundYou && viewerId && rows.some((x) => x.user_id === viewerId)) {
-            foundYou = true; // follow yourself the first time you show up
-            r.select({ type: "person", id: viewerId }, true);
-            setSelection({ type: "person", id: viewerId });
+          if (initial) setArrived(true);
+          if (viewerId && rows.some((x) => x.user_id === viewerId)) {
+            selfZone = zoneId;
+            if (!foundYou) {
+              foundYou = true; // follow yourself the first time you show up
+              r.select({ type: "person", id: viewerId }, true);
+              setSelection({ type: "person", id: viewerId });
+            }
           }
         });
+        let stopSelf = () => {};
+        if (viewerId) {
+          void currentSelfZone(viewerId).then((z) => {
+            if (selfZone === null) selfZone = z;
+          });
+          stopSelf = subscribeSelf(viewerId, (row) => {
+            const from = selfZone;
+            selfZone = row.zone_id;
+            if (!isZoneId(row.zone_id)) return;
+            const mode = travelMode({ viewedZone: zoneId, fromZone: from, toZone: row.zone_id, followingSelf: r.following === viewerId });
+            if (mode === "transition" && from) {
+              r.depart(viewerId); // walk off to the nearest edge, camera following
+              setTravel({ from, to: row.zone_id, look: lookOf(parseAvatar(row.avatar)) });
+            } else if (mode === "toast") {
+              setToast({ name: row.display_name || "You", to: row.zone_id });
+            }
+          });
+        }
+        stop = () => {
+          stopZone();
+          stopSelf();
+        };
       }
     })();
     return () => {
@@ -81,7 +130,31 @@ export function ZoneView({
       renderer.current?.destroy();
       renderer.current = null;
     };
-  }, [zone, zoneId, simSize, viewerId]);
+  }, [zone, zoneId, simSize, viewerId, arrive, travelDemo]);
+
+  // Arriving: drop ?arrive from the URL so a reload doesn't replay it.
+  useEffect(() => {
+    if (!arrive) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("arrive");
+    window.history.replaceState(null, "", u.pathname + u.search);
+  }, [arrive]);
+
+  // Toasts fade on their own.
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 10_000);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  const goTo = useCallback(
+    (to: string) => {
+      const q = new URLSearchParams({ arrive: "1" });
+      if (simSize !== null) q.set("sim", String(simSize));
+      router.push(`${zoneHref(to)}?${q}`);
+    },
+    [router, simSize],
+  );
 
   // The side panel reads the renderer twice a second.
   useEffect(() => {
@@ -107,6 +180,21 @@ export function ZoneView({
 
   return (
     <div className={welcome ? "zone-app has-welcome" : "zone-app"}>
+      {travel && <ZoneTravel from={travel.from} to={travel.to} look={travel.look} onGo={() => goTo(travel.to)} />}
+      {arrive && <ArrivalCurtain zoneId={zoneId} ready={arrived} />}
+      {toast && (
+        <div className="toast" role="status">
+          <span>
+            {toast.name} headed to {ZONES[toast.to]!.name}
+          </span>
+          <button className="btn" onClick={() => goTo(toast.to)}>
+            Follow
+          </button>
+          <button className="linkish" aria-label="Dismiss" onClick={() => setToast(null)}>
+            {"\u2715"}
+          </button>
+        </div>
+      )}
       <header className="zone-bar">
         <Link href="/world" className="brand small" aria-label="Earshot: go to the world">
           EAR<span>SHOT</span>

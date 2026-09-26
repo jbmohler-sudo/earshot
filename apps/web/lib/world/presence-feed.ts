@@ -73,3 +73,30 @@ export function subscribeZone(zoneId: string, onChange: (rows: PresenceRecord[],
     void db.removeChannel(channel);
   };
 }
+
+/**
+ * Your own presence, across every zone (channel `me:<id>`): calls `onZone(row)` whenever the server
+ * places you somewhere, so the page can tell when you've moved to another zone. Returns unsubscribe.
+ */
+export function subscribeSelf(userId: string, onZone: (row: PresenceRecord) => void): () => void {
+  const db = browserClient();
+  let closed = false;
+  const emit = (row: PresenceRecord) => {
+    if (!closed && row?.zone_id) onZone(row);
+  };
+  const channel = db
+    .channel(`me:${userId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "presence", filter: `user_id=eq.${userId}` }, (p) => emit(p.new as PresenceRecord))
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "presence", filter: `user_id=eq.${userId}` }, (p) => emit(p.new as PresenceRecord))
+    .subscribe();
+  return () => {
+    closed = true;
+    void db.removeChannel(channel);
+  };
+}
+
+/** Where your avatar is right now (null if you're not in the world). */
+export async function currentSelfZone(userId: string): Promise<string | null> {
+  const { data } = await browserClient().from("presence").select("zone_id").eq("user_id", userId).maybeSingle();
+  return data?.zone_id ?? null;
+}

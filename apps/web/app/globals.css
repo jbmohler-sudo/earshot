@@ -254,3 +254,77 @@ input.code-input { font: 700 24px var(--mono); letter-spacing: 0.3em; }
   border: 1px solid var(--line);
   padding: 8px 12px;
 }
+
+/* ---- world map (reusable) ---- */
+.world-map { position: relative; width: min(92vw, 720px); aspect-ratio: 160 / 96; }
+.world-map canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+.world-map-label {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font: 10px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  background: rgba(14, 10, 9, 0.8);
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+button.world-map-label { cursor: pointer; }
+.world-map-label.lit { color: #1a0f0b; background: var(--lava); }
+
+/* ---- zone travel ---- */
+.travel {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 24px;
+  background: #0b0808;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+.travel.on { opacity: 1; pointer-events: auto; }
+.travel.reduced { transition-duration: 300ms; }
+.travel.leaving { opacity: 0; transition-duration: 450ms; }
+.travel-map { animation: map-in 250ms ease-out both; }
+@keyframes map-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+.travel-title {
+  font: 700 clamp(22px, 6vw, 44px) var(--display);
+  letter-spacing: 0.08em;
+  color: var(--bone);
+  text-align: center;
+  padding: 10px 18px;
+  border-top: 3px solid var(--ember);
+  border-bottom: 3px solid var(--ember);
+  background: rgba(14, 10, 9, 0.9);
+}
+.travel-title.slam { animation: slam 380ms cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes slam {
+  0% { opacity: 0; transform: scale(2.2); }
+  60% { opacity: 1; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  background: var(--ash-900);
+  border: 1px solid var(--ember);
+  color: var(--bone);
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .travel-title.slam, .travel-map { animation: none; }
+}

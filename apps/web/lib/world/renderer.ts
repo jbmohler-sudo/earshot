@@ -9,6 +9,8 @@ import type { PersonSummary, Selection } from "./types";
 
 export const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
 const WALK_SPEED = 2.3; // tiles per second
+/** Your own avatar heading off to another zone walks this much faster, so the exit fits the transition. */
+const HURRY = 3.2;
 
 interface Walker {
   view: PlacedPerson;
@@ -56,6 +58,8 @@ export class WorldRenderer {
 
   private layout: Scene = { people: [], venues: [] };
   private walkers = new Map<string, Walker>();
+  /** Walkers leaving for another zone (zone travel): hurried to the nearest edge, deaf to scene updates. */
+  private readonly departing = new Set<string>();
   private selection: Selection = null;
   private followId: string | null = null;
   private S = 3;
@@ -126,16 +130,21 @@ export class WorldRenderer {
 
   // ---------------------------------------------------------------- scene
 
-  /** Show a new layout. `initial` places everyone at their spot instantly (first load). */
-  setScene(scene: Scene, initial = false): void {
+  /**
+   * Show a new layout. `initial` places everyone at their spot instantly (first load), except
+   * `arriveId`, who walks in from the nearest edge (arriving from another zone).
+   */
+  setScene(scene: Scene, initial = false, arriveId: string | null = null): void {
     this.layout = scene;
     const tierOf = new Map(scene.venues.map((v) => [v.groupKey, v.tier]));
     const present = new Set<string>();
     for (const p of scene.people) {
       present.add(p.id);
+      if (this.departing.has(p.id)) continue; // already walking off to another zone
       let w = this.walkers.get(p.id);
+      const arriving = initial && p.id === arriveId && !w;
       if (!w) {
-        const [ex, ey] = initial ? [0, 0] : this.edgePoint();
+        const [ex, ey] = initial && !arriving ? [0, 0] : this.edgePoint();
         w = { view: p, x: ex, y: ey, tx: ex, ty: ey, moving: false, walkT: 0, phase: Math.random() * 6.28, tempo: 7 + Math.random() * 4, plazaWait: 0, leaving: false };
         this.walkers.set(p.id, w);
       }
@@ -148,7 +157,9 @@ export class WorldRenderer {
         [w.tx, w.ty] = this.plazaSpot();
         w.plazaWait = 2 + Math.random() * 4;
       }
-      if (initial) {
+      if (arriving) {
+        [w.x, w.y] = this.nearestEdge(w.tx, w.ty);
+      } else if (initial) {
         w.x = w.tx;
         w.y = w.ty;
       }
@@ -330,7 +341,7 @@ export class WorldRenderer {
       const dy = w.ty - w.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 0.04) {
-        const st = Math.min(dist, WALK_SPEED * dt);
+        const st = Math.min(dist, WALK_SPEED * (this.departing.has(id) ? HURRY : 1) * dt);
         w.x += (dx / dist) * st;
         w.y += (dy / dist) * st;
         w.moving = true;
@@ -341,6 +352,7 @@ export class WorldRenderer {
         w.moving = false;
         if (w.leaving) {
           this.walkers.delete(id);
+          this.departing.delete(id);
           if (this.selection?.type === "person" && this.selection.id === id) this.opts.onSelect?.(null);
           continue;
         }
@@ -539,6 +551,35 @@ export class WorldRenderer {
   }
 
   // ---------------------------------------------------------------- geometry helpers
+
+  /** Zone travel: send this person to the nearest edge now, hurried, whatever the next scene says. */
+  depart(id: string): void {
+    const w = this.walkers.get(id);
+    if (!w) return;
+    this.departing.add(id);
+    w.leaving = true;
+    [w.tx, w.ty] = this.nearestEdge(w.x, w.y);
+  }
+
+  /** The point on any spawn edge closest to (x, y). */
+  private nearestEdge(x: number, y: number): TilePoint {
+    let best: TilePoint = this.edgePoint();
+    let bestD = Infinity;
+    for (const e of this.zone.layout.spawnEdges) {
+      const [ax, ay] = e.from;
+      const [bx, by] = e.to;
+      const len2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+      const u = Math.min(1, Math.max(0, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / len2));
+      const px = ax + (bx - ax) * u;
+      const py = ay + (by - ay) * u;
+      const d = Math.hypot(px - x, py - y);
+      if (d < bestD) {
+        bestD = d;
+        best = [px, py];
+      }
+    }
+    return best;
+  }
 
   private edgePoint(): TilePoint {
     const edges = this.zone.layout.spawnEdges;
