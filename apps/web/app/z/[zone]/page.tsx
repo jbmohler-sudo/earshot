@@ -11,10 +11,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return { title: isZoneId(zone) ? `${ZONES[zone]!.name} · Earshot` : "Earshot" };
 }
 
-export default async function ZonePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ sim?: string }> }) {
+export default async function ZonePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ sim?: string; welcome?: string }> }) {
   const { zone } = await params;
   if (!isZoneId(zone)) notFound();
-  const { sim } = await searchParams;
+  const { sim, welcome } = await searchParams;
   // ?sim=N shows a simulated crowd of N (20–260) instead of real people. For development and demos.
   const simSize = sim === undefined ? null : Math.max(20, Math.min(260, Number.parseInt(sim, 10) || 130));
   const supabase = await createClient();
@@ -22,5 +22,5 @@ export default async function ZonePage({ params, searchParams }: { params: Promi
   // Phase 1 gate: log that this person opened the world today (one row per day; demos don't count).
   // Never block the page on it.
   if (data.user && simSize === null) await supabase.rpc("record_world_visit").then(undefined, () => {});
-  return <ZoneView zoneId={zone} simSize={simSize} viewerId={data.user?.id ?? null} />;
+  return <ZoneView zoneId={zone} simSize={simSize} viewerId={data.user?.id ?? null} welcome={!!data.user && welcome !== undefined} />;
 }

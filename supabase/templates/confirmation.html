@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    <title>Confirm your Earshot sign-in</title>
+    <title>Your Earshot sign-in code</title>
   </head>
   <body style="margin:0;padding:0;background:#120d0c;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#120d0c;">
@@ -18,21 +18,17 @@
             </tr>
             <tr>
               <td style="padding:8px 28px 0 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:24px;color:#efe4d6;">
-                Welcome to Earshot. Confirm your email to get your avatar into the world. The link works once, for the next hour.
+                Welcome to Earshot. Your sign-in code:
               </td>
             </tr>
             <tr>
-              <td style="padding:24px 28px;">
-                <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me"
-                   style="display:inline-block;background:#ff6a2b;color:#1a0f0b;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;text-decoration:none;padding:12px 20px;border:1px solid #ff6a2b;">
-                  Confirm and sign in
-                </a>
+              <td style="padding:16px 28px 8px 28px;">
+                <div style="display:inline-block;background:#120d0c;border:1px solid #ff6a2b;padding:12px 18px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:10px;color:#ffb347;">{{ .Token }}</div>
               </td>
             </tr>
             <tr>
-              <td style="padding:0 28px 24px 28px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#a39187;">
-                Button not working? Paste this into your browser:<br />
-                <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me" style="color:#ffb347;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me</a>
+              <td style="padding:8px 28px 24px 28px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;color:#a39187;">
+                Type it on the Earshot page where you asked for it. It works once, for the next hour.
               </td>
             </tr>
             <tr>

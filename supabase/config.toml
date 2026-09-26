@@ -219,7 +219,7 @@ secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1m0s"
 # Number of characters used in the email OTP.
-otp_length = 8
+otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
@@ -233,14 +233,14 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Branded sign-in emails. Links use the token_hash flow through /auth/callback, so they work even when
-# opened in a different browser or device than the one that asked for them.
+# Branded sign-in emails. They carry a 6-digit code ({{ .Token }}) typed on the page that asked for it,
+# so nobody has to switch apps and come back through a link. (Last.fm is the primary sign-in.)
 [auth.email.template.magic_link]
-subject = "Your Earshot sign-in link"
+subject = "Your Earshot sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm your email for Earshot"
+subject = "Your Earshot sign-in code"
 content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template

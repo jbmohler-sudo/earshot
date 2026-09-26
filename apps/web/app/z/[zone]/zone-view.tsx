@@ -10,7 +10,17 @@ import { ZONES } from "@/lib/world/zones";
 const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
 const TIER_CHIP = { busker: "", tavern: "t-tavern", amph: "t-amph", fest: "t-fest" } as const;
 
-export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSize: number | null; viewerId: string | null }) {
+export function ZoneView({
+  zoneId,
+  simSize,
+  viewerId,
+  welcome = false,
+}: {
+  zoneId: string;
+  simSize: number | null;
+  viewerId: string | null;
+  welcome?: boolean;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const renderer = useRef<WorldRenderer | null>(null);
   const [venues, setVenues] = useState<SceneVenue[]>([]);
@@ -96,7 +106,7 @@ export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSiz
   const venue = selection?.type === "venue" ? venues.find((v) => v.groupKey === selection.groupKey) : undefined;
 
   return (
-    <div className="zone-app">
+    <div className={welcome ? "zone-app has-welcome" : "zone-app"}>
       <header className="zone-bar">
         <Link href="/world" className="brand small" aria-label="Earshot: go to the world">
           EAR<span>SHOT</span>
@@ -108,6 +118,13 @@ export function ZoneView({ zoneId, simSize, viewerId }: { zoneId: string; simSiz
           {viewerId ? "You" : "Sign in"}
         </Link>
       </header>
+
+      {welcome && (
+        <p className="welcome" role="status">
+          You&rsquo;re in. Play something on Last.fm and your avatar walks to that artist&rsquo;s venue.{" "}
+          <Link href="/me">Pick your look</Link>
+        </p>
+      )}
 
       <main className="zone-stage">
         <div ref={host} className="zone-canvas" />

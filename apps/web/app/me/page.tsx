@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { parseAvatar } from "@/lib/avatar";
+import { isLastfmOnlyEmail } from "@/lib/lastfm-identity";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { currentZone } from "@/lib/world/where";
@@ -35,6 +36,47 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
     .maybeSingle();
   const flash = LASTFM_MESSAGES[(await searchParams).lastfm ?? ""];
   const zone = await currentZone(auth.user.id);
+  // Accounts created by "Sign in with Last.fm" have no real email: disconnecting would lock them out.
+  const lastfmOnly = isLastfmOnlyEmail(auth.user.email);
+
+  const lastfmCard = (
+    <section className="card stack">
+      <h2>Last.fm</h2>
+      {flash && (
+        <p className={flash.ok ? "note" : "error"} role={flash.ok ? "status" : "alert"}>
+          {flash.text}
+        </p>
+      )}
+      {lastfm ? (
+        <>
+          <p className="lede">
+            Connected as{" "}
+            <a href={`https://www.last.fm/user/${encodeURIComponent(lastfm.external_username)}`} target="_blank" rel="noreferrer">
+              {lastfm.external_username}
+            </a>
+            . Play something and your avatar walks to that artist&rsquo;s venue.
+          </p>
+          {lastfmOnly ? (
+            <p className="note">You sign in with Last.fm, so it stays connected.</p>
+          ) : (
+            <form action="/api/auth/lastfm/disconnect" method="post">
+              <button className="btn ghost">Disconnect Last.fm</button>
+            </form>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="lede">
+            Earshot reads what you&rsquo;re playing from Last.fm. Connect your account so we know it&rsquo;s really you.
+          </p>
+          <a className="btn btn-big" href="/api/auth/lastfm/start">
+            Connect Last.fm
+          </a>
+          <p className="note">Listening on Spotify? Connect it in your Last.fm settings under Applications so your plays reach Last.fm.</p>
+        </>
+      )}
+    </section>
+  );
 
   return (
     <main className="hold wide">
@@ -47,9 +89,10 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
         </form>
       </header>
 
+      {!lastfm && lastfmCard}
       <section className="card enter">
         <div>
-          <a className="btn" href="/world">
+          <a className={lastfm ? "btn btn-big" : "btn ghost"} href="/world">
             Enter the world
           </a>
         </div>
@@ -59,41 +102,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
             : `Takes you to ${ZONES[zone]!.name}.`}
         </p>
       </section>
-
-      <section className="card stack">
-        <h2>Last.fm</h2>
-        {flash && (
-          <p className={flash.ok ? "note" : "error"} role={flash.ok ? "status" : "alert"}>
-            {flash.text}
-          </p>
-        )}
-        {lastfm ? (
-          <>
-            <p className="lede">
-              Connected as{" "}
-              <a href={`https://www.last.fm/user/${encodeURIComponent(lastfm.external_username)}`} target="_blank" rel="noreferrer">
-                {lastfm.external_username}
-              </a>
-              . Play something and your avatar walks to that artist&rsquo;s venue.
-            </p>
-            <form action="/api/auth/lastfm/disconnect" method="post">
-              <button className="btn ghost">Disconnect Last.fm</button>
-            </form>
-          </>
-        ) : (
-          <>
-            <p className="lede">
-              Earshot reads what you&rsquo;re playing from Last.fm. Connect your account so we know it&rsquo;s really you.
-            </p>
-            <p>
-              <a className="btn" href="/api/auth/lastfm/start">
-                Connect Last.fm
-              </a>
-            </p>
-            <p className="note">Listening on Spotify? Connect it in your Last.fm settings under Applications so your plays reach Last.fm.</p>
-          </>
-        )}
-      </section>
+      {lastfm && lastfmCard}
 
       <ProfileForm displayName={profile?.display_name ?? ""} avatar={parseAvatar(profile?.avatar)} />
       <VisibilityToggle visible={profile?.visible ?? true} />

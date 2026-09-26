@@ -1,5 +1,6 @@
 import { tierOf } from "@earshot/core";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
 const LADDER = [
   { n: 1, label: "Busker", range: "1 listener" },
@@ -8,7 +9,11 @@ const LADDER = [
   { n: 50, label: "Festival", range: "50+" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const signedIn = !!data.user;
+
   return (
     <main className="hold">
       <h1 className="brand">
@@ -20,6 +25,29 @@ export default function Home() {
         A pixel-art music world. Link Last.fm and your avatar walks to the venue of whatever you&rsquo;re playing,
         next to everyone else listening right now.
       </p>
+      <div className="stack">
+        {signedIn ? (
+          <>
+            <Link className="btn btn-big" href="/world">
+              Enter the world
+            </Link>
+            <p className="row">
+              <Link href="/me">Your avatar and settings</Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <a className="btn btn-big" href="/api/auth/lastfm/start">
+              Sign in with Last.fm
+            </a>
+            <p className="row note">
+              <Link href="/world">Look around first</Link>
+              <span aria-hidden="true">·</span>
+              <Link href="/login">Use email instead</Link>
+            </p>
+          </>
+        )}
+      </div>
       <ul className="ladder">
         {LADDER.map((t) => (
           <li key={t.label} data-tier={tierOf(t.n)}>
@@ -28,15 +56,6 @@ export default function Home() {
           </li>
         ))}
       </ul>
-      <p className="soon">Doors open soon.</p>
-      <p>
-        <Link className="btn" href="/world">
-          Look around
-        </Link>{" "}
-        <Link className="btn ghost" href="/me">
-          Get your avatar ready
-        </Link>
-      </p>
     </main>
   );
 }
