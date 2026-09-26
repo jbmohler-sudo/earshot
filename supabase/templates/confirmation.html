@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Confirm your Earshot sign-in</title>
+  </head>
+  <body style="margin:0;padding:0;background:#120d0c;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#120d0c;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#1b1413;border:1px solid #342825;">
+            <tr>
+              <td style="padding:28px 28px 8px 28px;font-family:'Courier New',Courier,monospace;font-size:28px;font-weight:bold;letter-spacing:4px;color:#efe4d6;">
+                EAR<span style="color:#ff6a2b;">SHOT</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 28px 0 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:24px;color:#efe4d6;">
+                Welcome to Earshot. Confirm your email to get your avatar into the world. The link works once, for the next hour.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px;">
+                <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me"
+                   style="display:inline-block;background:#ff6a2b;color:#1a0f0b;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;text-decoration:none;padding:12px 20px;border:1px solid #ff6a2b;">
+                  Confirm and sign in
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 24px 28px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#a39187;">
+                Button not working? Paste this into your browser:<br />
+                <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me" style="color:#ffb347;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/me</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px 24px 28px;border-top:1px solid #342825;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#6d5b63;">
+                You&rsquo;re getting this because someone asked to sign in to earshot.world with this address. If that wasn&rsquo;t you, ignore this email and nothing happens.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

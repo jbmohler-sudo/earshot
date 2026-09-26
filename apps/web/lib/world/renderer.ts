@@ -2,7 +2,7 @@
 // RenderTexture, which is shown scaled up with nearest-neighbour filtering: the prototype's pixel look.
 // The layout (who stands at which spot) arrives as a Scene; this file only animates and draws it.
 import { drawPerson, type Frame, makeIso, spotFor, spotJitter, type TilePoint, type ZonePlugin } from "@earshot/core";
-import { Application, Container, RenderTexture, Sprite, Text, TextStyle } from "pixi.js";
+import { Application, Container, Graphics, RenderTexture, Sprite, Text, TextStyle } from "pixi.js";
 import { PixiPainter } from "./painters";
 import type { PlacedPerson, Scene, SceneVenue } from "./scene";
 import type { PersonSummary, Selection } from "./types";
@@ -24,6 +24,13 @@ interface Walker {
   leaving: boolean;
 }
 
+interface Label {
+  root: Container;
+  plate: Graphics;
+  title: Text | null;
+  sub: Text;
+}
+
 export interface RendererOptions {
   reducedMotion: boolean;
   onSelect?: (sel: Selection) => void;
@@ -41,10 +48,11 @@ export class WorldRenderer {
   private readonly ground = new PixiPainter();
   private readonly dyn = new PixiPainter();
   private readonly view: Sprite;
+  /** Screen-space layer above the whole world texture: labels are never occluded by props or people. */
   private readonly labels = new Container();
-  private readonly venueLabels = new Map<string, { box: Text; sub: Text }>();
-  private readonly tags = new Map<string, Text>();
-  private readonly plazaLabel: Text;
+  private readonly venueLabels = new Map<string, Label>();
+  private readonly tags = new Map<string, Label>();
+  private readonly plazaLabel: Label;
 
   private layout: Scene = { people: [], venues: [] };
   private walkers = new Map<string, Walker>();
@@ -90,8 +98,8 @@ export class WorldRenderer {
 
     this.view = new Sprite(this.rt);
     this.view.roundPixels = true;
-    this.plazaLabel = this.makeText("", this.fonts.mono, 10, "#a39187");
-    this.labels.addChild(this.plazaLabel);
+    this.plazaLabel = this.makeLabel(null, { family: this.fonts.mono, size: 10, fill: "#a39187" });
+    // Order matters: the world texture first, every label after it.
     app.stage.addChild(this.view, this.labels);
 
     const canvas = app.canvas;
@@ -351,9 +359,24 @@ export class WorldRenderer {
 
   private makeText(text: string, family: string, size: number, fill: string, weight: "500" | "700" = "500"): Text {
     const t = new Text({ text, style: new TextStyle({ fontFamily: family, fontSize: size, fill, fontWeight: weight }) });
-    t.anchor.set(0.5, 1);
+    t.anchor.set(0.5, 0);
     t.resolution = Math.min(3, window.devicePixelRatio || 1);
     return t;
+  }
+
+  /** A label on its own dark plate (prototype style), so it reads over any scenery. */
+  private makeLabel(title: { family: string; size: number; fill: string } | null, sub: { family: string; size: number; fill: string }): Label {
+    const root = new Container();
+    const plate = new Graphics();
+    const titleText = title ? this.makeText("", title.family, title.size, title.fill, "700") : null;
+    const subText = this.makeText("", sub.family, sub.size, sub.fill, title ? "500" : "700");
+    root.addChild(plate, ...(titleText ? [titleText] : []), subText);
+    this.labels.addChild(root);
+    return { root, plate, title: titleText, sub: subText };
+  }
+
+  private destroyLabel(l: Label): void {
+    l.root.destroy({ children: true });
   }
 
   private drawLabels(slotted: (SceneVenue & { slot: number })[]): void {
@@ -363,27 +386,36 @@ export class WorldRenderer {
       seen.add(v.groupKey);
       let lbl = this.venueLabels.get(v.groupKey);
       if (!lbl) {
-        lbl = { box: this.makeText("", this.fonts.display, 11, "#efe4d6", "700"), sub: this.makeText("", this.fonts.mono, 10, "#ffb347") };
-        this.labels.addChild(lbl.box, lbl.sub);
+        lbl = this.makeLabel({ family: this.fonts.display, size: 11, fill: "#efe4d6" }, { family: this.fonts.mono, size: 10, fill: "#ffb347" });
         this.venueLabels.set(v.groupKey, lbl);
       }
       const big = v.tier === "fest";
+      const selected = this.selection?.type === "venue" && this.selection.groupKey === v.groupKey;
       const [sx, sy] = this.zone.layout.slots[v.slot]!;
       const [lx, ly] = this.iso(sx, sy);
       const [x, y] = toScreen(lx, ly - this.zone.venueStyles[v.tier].labelLift - 8);
-      lbl.box.text = v.groupName.toUpperCase();
-      lbl.box.style.fontSize = big ? 15 : 11;
+      const title = lbl.title!;
+      title.text = v.groupName.toUpperCase();
+      title.style.fontSize = big ? 15 : 11;
+      title.style.fill = selected ? "#ffb347" : "#efe4d6";
       lbl.sub.text = v.tier === "busker" ? `1 here${v.stageTitle ? ` · ♪ ${v.stageTitle}` : ""}` : `${v.count} here · ♪ ${v.stageTitle ?? ""}`;
       lbl.sub.style.fontSize = big ? 12 : 10;
-      const selected = this.selection?.type === "venue" && this.selection.groupKey === v.groupKey;
-      lbl.box.style.fill = selected ? "#ffb347" : "#efe4d6";
-      lbl.box.position.set(Math.round(x), Math.round(y - (big ? 20 : 15)));
-      lbl.sub.position.set(Math.round(x), Math.round(y - 2));
+      const w = Math.ceil(Math.max(title.width, lbl.sub.width) + 16);
+      const h = big ? 44 : 34;
+      const bx = Math.round(x - w / 2);
+      const by = Math.round(y - h);
+      lbl.plate
+        .clear()
+        .rect(bx, by, w, h)
+        .fill({ color: "#0e0a09", alpha: 0.86 })
+        .rect(bx + 0.5, by + 0.5, w - 1, h - 1)
+        .stroke({ width: selected || big ? 2 : 1, color: selected ? "#ffb347" : big ? this.zone.theme.accent : "#4a3834" });
+      title.position.set(Math.round(x), by + 5);
+      lbl.sub.position.set(Math.round(x), by + (big ? 25 : 19));
     }
     for (const [k, lbl] of this.venueLabels) {
       if (!seen.has(k)) {
-        lbl.box.destroy();
-        lbl.sub.destroy();
+        this.destroyLabel(lbl);
         this.venueLabels.delete(k);
       }
     }
@@ -393,10 +425,15 @@ export class WorldRenderer {
     const pz = this.zone.layout.plaza;
     const [plx, ply] = this.iso((pz.x0 + pz.x1) / 2, (pz.y0 + pz.y1) / 2);
     const [px, py] = toScreen(plx, ply - 20);
-    this.plazaLabel.text = waiting ? `PLAZA · ${waiting} waiting for a stage` : "";
-    this.plazaLabel.position.set(Math.round(px), Math.round(py));
+    this.plazaLabel.root.visible = waiting > 0;
+    if (waiting) {
+      this.plazaLabel.sub.text = `PLAZA · ${waiting} waiting for a stage`;
+      const w = Math.ceil(this.plazaLabel.sub.width + 12);
+      this.plazaLabel.plate.clear().rect(Math.round(px - w / 2), Math.round(py - 16), w, 16).fill({ color: "#0e0a09", alpha: 0.8 });
+      this.plazaLabel.sub.position.set(Math.round(px), Math.round(py - 14));
+    }
 
-    // Name tags: you, and whoever is selected.
+    // Name tags: you, and whoever is selected. Colored plate, dark text.
     const tagged = new Set<string>();
     for (const w of this.walkers.values()) {
       const selected = this.selection?.type === "person" && this.selection.id === w.view.id;
@@ -404,19 +441,19 @@ export class WorldRenderer {
       tagged.add(w.view.id);
       let tag = this.tags.get(w.view.id);
       if (!tag) {
-        tag = this.makeText("", this.fonts.display, 10, "#1a0f0b", "700");
-        this.labels.addChild(tag);
+        tag = this.makeLabel(null, { family: this.fonts.display, size: 10, fill: "#1a0f0b" });
         this.tags.set(w.view.id, tag);
       }
-      tag.text = w.view.you ? "YOU" : w.view.name;
-      tag.style.fill = w.view.you ? "#efe4d6" : "#ffb347";
+      tag.sub.text = w.view.you ? "YOU" : w.view.name;
       const [lx, ly] = this.iso(w.x, w.y);
       const [x, y] = toScreen(lx, ly - 15);
-      tag.position.set(Math.round(x), Math.round(y));
+      const tw = Math.ceil(tag.sub.width + 10);
+      tag.plate.clear().rect(Math.round(x - tw / 2), Math.round(y - 14), tw, 14).fill(w.view.you ? "#efe4d6" : "#ffb347");
+      tag.sub.position.set(Math.round(x), Math.round(y - 13));
     }
     for (const [id, tag] of this.tags) {
       if (!tagged.has(id)) {
-        tag.destroy();
+        this.destroyLabel(tag);
         this.tags.delete(id);
       }
     }
