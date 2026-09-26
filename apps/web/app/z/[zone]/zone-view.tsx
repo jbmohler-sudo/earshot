@@ -130,7 +130,14 @@ export function ZoneView({
         <div ref={host} className="zone-canvas" />
         {simSize === null && live && total === 0 && (
           <div className="zone-empty">
-            Nobody&rsquo;s here right now. <Link href="/me">Connect Last.fm</Link> and play something.
+            Nobody&rsquo;s here right now.{" "}
+            {viewerId ? (
+              <>Play something on Last.fm and you&rsquo;ll walk in.</>
+            ) : (
+              <>
+                <a href="/api/auth/lastfm/start">Sign in with Last.fm</a> and play something.
+              </>
+            )}
           </div>
         )}
         <div className="zone-hint">Drag to look around. Tap anyone.</div>
