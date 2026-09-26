@@ -15,8 +15,8 @@
   - **Step 7:** server-side layout into `presence` + Realtime per zone; navigation (`/world`, logo links, "Enter the world", "You").
   - **Step 8:** The Lot (Indie), The Hollow (Folk) and The Outskirts as full plug-ins with placeholder art. Stage-song matching now ignores release variants.
   - **Email:** Resend SMTP (set by Jeff in the Supabase dashboard), DKIM/SPF via Resend's Vercel integration, DMARC `p=none`, branded token_hash templates. Delivery to a non-member address confirmed at the SMTP step.
-- **Waiting on Jeff:** confirm the test email arrived in the inbox (not spam). Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
-- **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own.
+  - **Gate measurement:** `select * from private.phase1_gate;` in the dashboard SQL editor. Per user: listening days and world-visit days in the last 14, plus last visit.
+- **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
 
@@ -62,6 +62,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Every zone must pass `zones/zones.test.ts` | New zones get layout and drawing sanity checks for free |
 | 2026-09-26 | Sign-in emails link to `{{ .SiteURL }}/auth/callback?token_hash=…&type=email&next=/me`, not `{{ .ConfirmationURL }}` | The PKCE default only works in the browser that asked; friends open links on their phones |
 | 2026-09-26 | Labels (venue, name tags, plaza) sit on plates in a screen-space layer above the world texture | Legible over any scenery, in every zone |
+| 2026-09-26 | Gate measurement = two day-level logs (`listening_days` via a trigger on engagement writes; `world_visits` via `record_world_visit()` from the zone page) + `private.phase1_gate`. No analytics tools, dates only. | Jeff: just enough to see "connected and returning" |
 | 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
 
 ## System Map
@@ -81,6 +82,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
 - **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
 - **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
+- **Gate measurement:** `supabase/migrations/20260926150000_phase1_gate.sql` (`listening_days`, `world_visits`, `record_world_visit()`, `private.phase1_gate`).
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
@@ -97,7 +99,8 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 ### 2026-09-26 — Label plates, email branding, DMARC
 **Did:** Jeff verified all three genre routes. Put labels on plates above the world texture (fixes a busker label that read as hidden behind a lantern in The Hollow). Added `_dmarc` TXT `v=DMARC1; p=none;` via the Vercel CLI. Branded magic-link and confirmation templates using token_hash links, pushed with `supabase config push` (diff previewed first: templates only, SMTP untouched). Sent a test sign-in to `jbmohler+earshot-test@gmail.com`; the auth log shows it accepted with no SMTP error. Custom SMTP had already moved the email limit from 2/h to 30/h.
 **Gotchas:** `rate_limit.email_sent` only syncs when SMTP is enabled in the local config, which it deliberately isn't (the key stays in the dashboard). Raise it in the dashboard if needed.
-**State after:** Ready for step 9 once Jeff confirms the test email landed in the inbox. The alias account exists (unconfirmed until clicked); delete it after the test.
+Jeff confirmed the email landed in the inbox and the link works; the alias account is deleted. Then gate measurement: `listening_days` + `world_visits` (server-only), `record_world_visit()` called from the zone page, and the `private.phase1_gate` view. The RLS smoke test covers them; verified in prod with a throwaway user, since deleted. Jeff's own row already shows today's listening and visit.
+**State after:** Ready for step 9.
 **Next:** Step 9 invites.
 
 ### 2026-09-26 — Song key fix + step 8 (three new zones)
