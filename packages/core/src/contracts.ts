@@ -112,6 +112,21 @@ export interface ZoneScenery {
   overlay?(p: Painter, f: Frame): void;
 }
 
+/**
+ * An ambient local: scenery that happens to be a person (a blacksmith at the anvil, a fisherman at the
+ * creek). Purely cosmetic and client-side. Never a participant, never counted, never stored.
+ */
+export interface ZoneLocal {
+  /** Stable id, e.g. "blacksmith". Not shown to people. */
+  id: string;
+  /** Where they hang out (tiles): tap target and draw order. */
+  at: TilePoint;
+  /** Where their feet are right now, if they move around (defaults to `at`). */
+  pos?(f: Frame): TilePoint;
+  /** Their idle loop. Static pose when f.motion is false. */
+  draw(p: Painter, f: Frame): void;
+}
+
 export interface Emote {
   id: string;
   label: string;
@@ -134,4 +149,6 @@ export interface ZonePlugin {
   scenery: ZoneScenery;
   emotes: Emote[];
   theme: ZoneTheme;
+  /** Ambient locals, most characteristic first (the first few are the ones kept as crowds grow). */
+  locals?: ZoneLocal[];
 }

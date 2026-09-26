@@ -1,7 +1,7 @@
 // PixiJS world renderer. The zone draws in art pixels (through PixiPainter) into a low-res
 // RenderTexture, which is shown scaled up with nearest-neighbour filtering: the prototype's pixel look.
 // The layout (who stands at which spot) arrives as a Scene; this file only animates and draws it.
-import { drawPerson, type Frame, makeIso, spotFor, spotJitter, type TilePoint, type ZonePlugin } from "@earshot/core";
+import { drawPerson, type Frame, localsToShow, makeIso, type Painter, spotFor, spotJitter, type TilePoint, type ZonePlugin } from "@earshot/core";
 import { Application, Container, Graphics, RenderTexture, Sprite, Text, TextStyle } from "pixi.js";
 import { PixiPainter } from "./painters";
 import type { PlacedPerson, Scene, SceneVenue } from "./scene";
@@ -11,6 +11,16 @@ export const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphithea
 const WALK_SPEED = 2.3; // tiles per second
 /** Your own avatar heading off to another zone walks this much faster, so the exit fits the transition. */
 const HURRY = 3.2;
+
+/** A painter that fades everything drawn through it (locals easing in and out). */
+function faded(p: Painter, alpha: number): Painter {
+  return {
+    rect: (x, y, w, h, color, a = 1) => p.rect(x, y, w, h, color, a * alpha),
+    poly: (pts, color, a = 1) => p.poly(pts, color, a * alpha),
+    line: (x0, y0, x1, y1, width, color, a = 1) => p.line(x0, y0, x1, y1, width, color, a * alpha),
+    glow: (pts, color, a) => p.glow(pts, color, a * alpha),
+  };
+}
 
 interface Walker {
   view: PlacedPerson;
@@ -66,6 +76,9 @@ export class WorldRenderer {
   private camX = 0;
   private camY = 0;
   private t = 0;
+  private lastFrame: Frame = { t: 0, dt: 0, motion: true };
+  /** Ambient locals' current opacity (0..1), easing toward shown/hidden as the crowd changes. */
+  private readonly localAlpha = new Map<string, number>();
   private fonts = { display: "Courier New", mono: "monospace" };
   private down: { x: number; y: number; cx: number; cy: number; moved: boolean } | null = null;
   private readonly cleanup: (() => void)[] = [];
@@ -269,6 +282,7 @@ export class WorldRenderer {
   private frame(dt: number): void {
     this.t += dt;
     const f: Frame = { t: this.t, dt, motion: !this.opts.reducedMotion };
+    this.lastFrame = f;
     this.move(dt);
 
     if (this.followId) {
@@ -296,6 +310,18 @@ export class WorldRenderer {
       items.push({ d: at[0] + at[1], draw: () => this.zone.venueStyles[v.tier].draw(p, { slot: v.slot, at, tier: v.tier, count: v.count }, f) });
     }
     for (const w of this.walkers.values()) items.push({ d: w.x + w.y, draw: () => this.drawWalker(w, f) });
+    // Ambient locals: scenery, never part of the Scene or any count. Fewer as real people arrive.
+    const locals = this.zone.locals ?? [];
+    const shown = localsToShow(this.layout.people.length, locals.length);
+    locals.forEach((l, i) => {
+      const target = i < shown ? 1 : 0;
+      const prev = this.localAlpha.get(l.id) ?? (this.t < 0.5 ? target : 0);
+      const a = f.motion ? prev + Math.sign(target - prev) * Math.min(Math.abs(target - prev), dt * 1.25) : target;
+      this.localAlpha.set(l.id, a);
+      if (a <= 0.01) return;
+      const [x, y] = l.pos?.(f) ?? l.at;
+      items.push({ d: x + y, draw: () => l.draw(a < 0.99 ? faded(p, a) : p, f) });
+    });
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.draw();
     for (const v of slotted) {
@@ -531,8 +557,20 @@ export class WorldRenderer {
         hit = w;
       }
     }
+    // Locals can be tapped too (they only ever say "Local · lives here").
+    let localHit: string | null = null;
+    for (const l of this.zone.locals ?? []) {
+      if ((this.localAlpha.get(l.id) ?? 0) < 0.5) continue;
+      const [x, y] = l.pos?.(this.lastFrame) ?? l.at;
+      const [cx, cy] = this.iso(x, y);
+      if (lx >= cx - 5 && lx <= cx + 5 && ly >= cy - 14 && ly <= cy + 2 && x + y > hd) {
+        hd = x + y;
+        localHit = l.id;
+      }
+    }
     let sel: Selection = null;
-    if (hit) sel = { type: "person", id: hit.view.id };
+    if (localHit) sel = { type: "local", id: localHit };
+    else if (hit) sel = { type: "person", id: hit.view.id };
     else {
       let best = Infinity;
       for (const v of this.slotted()) {

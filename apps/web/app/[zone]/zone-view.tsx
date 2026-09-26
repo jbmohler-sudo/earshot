@@ -263,6 +263,11 @@ export function ZoneView({
                 </button>
               </div>
             </>
+          ) : selection?.type === "local" ? (
+            <>
+              <div className="who">Local</div>
+              <div className="where">lives here</div>
+            </>
           ) : venue ? (
             <>
               <div className="who">{venue.groupName}</div>

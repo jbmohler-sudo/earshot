@@ -13,7 +13,7 @@ export interface PersonView {
   you?: boolean;
 }
 
-export type Selection = { type: "person"; id: string } | { type: "venue"; groupKey: string } | null;
+export type Selection = { type: "person"; id: string } | { type: "venue"; groupKey: string } | { type: "local"; id: string } | null;
 
 export interface PersonSummary {
   id: string;

@@ -2,6 +2,7 @@
 import type { ZonePlugin } from "@earshot/core";
 import { claims, id } from "./claims.ts";
 import { layout } from "./layout.ts";
+import { createLocals } from "./locals.ts";
 import { createScenery } from "./scenery.ts";
 import { createVenueStyles } from "./venues.ts";
 
@@ -16,6 +17,7 @@ export function createZone(): ZonePlugin {
     venueStyles: createVenueStyles(),
     scenery: createScenery(),
     emotes: [{ id: "sway", label: "Sway" }],
+    locals: createLocals(),
     theme: { name: "The Lot", background: "#0e0c14", accent: "#ff5fa2" },
   };
 }

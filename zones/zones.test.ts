@@ -92,6 +92,59 @@ describe.each(ZONES)("zone %s", (id, create) => {
     expect(box.maxY).toBeLessThan(h + 60);
   });
 
+  it("has 4-6 ambient locals, placed out of every venue crowd's way", () => {
+    const locals = zone.locals ?? [];
+    expect(locals.length).toBeGreaterThanOrEqual(4);
+    expect(locals.length).toBeLessThanOrEqual(6);
+    expect(new Set(locals.map((l) => l.id)).size).toBe(locals.length);
+    // Check the resting spot and, for movers, positions along their loop.
+    for (const l of locals) {
+      const spots = [l.at, ...Array.from({ length: 24 }, (_, k) => l.pos?.({ t: k * 1.7, dt: 0.1, motion: true }) ?? l.at)];
+      for (const [x, y] of spots) {
+        expect(x, l.id).toBeGreaterThanOrEqual(layout.bounds.x0);
+        expect(x, l.id).toBeLessThanOrEqual(layout.bounds.x1);
+        expect(y, l.id).toBeGreaterThanOrEqual(layout.bounds.y0);
+        expect(y, l.id).toBeLessThanOrEqual(layout.bounds.y1);
+        for (const [sx, sy] of layout.slots) {
+          const dx = x - sx;
+          const dy = y - sy;
+          const d = Math.hypot(dx, dy);
+          // Crowds fan out toward the viewer (+x+y): keep well clear there, just off the stage behind it.
+          expect(d, `${l.id} vs slot ${sx},${sy}`).toBeGreaterThanOrEqual(dx + dy > 0 ? 8 : 3.2);
+        }
+      }
+    }
+  });
+
+  it.each([true, false])("locals draw finite, on-canvas geometry (motion %s)", (motion) => {
+    const { p, box } = recorder();
+    for (let k = 0; k < 120; k++) for (const l of zone.locals ?? []) l.draw(p, { t: k * 0.5, dt: 0.5, motion });
+    expect(box.finite).toBe(true);
+    expect(box.minX).toBeGreaterThan(-20);
+    expect(box.maxX).toBeLessThan(layout.pixels.w + 20);
+    expect(box.minY).toBeGreaterThan(-20);
+    expect(box.maxY).toBeLessThan(layout.pixels.h + 20);
+  });
+
+  it("locals hold a static pose with reduced motion", () => {
+    const calls = (t: number) => {
+      const out: string[] = [];
+      const p: Painter = {
+        rect: (...a) => void out.push(`r${a.join(",")}`),
+        poly: (...a) => void out.push(`p${JSON.stringify(a)}`),
+        line: (...a) => void out.push(`l${a.join(",")}`),
+        glow: (...a) => void out.push(`g${JSON.stringify(a)}`),
+      };
+      for (const l of zone.locals ?? []) {
+        l.draw(p, { t, dt: 0.016, motion: false });
+        out.push(`at${(l.pos?.({ t, dt: 0.016, motion: false }) ?? l.at).join(",")}`);
+      }
+      return out;
+    };
+    expect(calls(0)).toEqual(calls(7.3));
+    expect(calls(0)).toEqual(calls(123.4));
+  });
+
   it("gives every tier a label height and tap reach", () => {
     for (const t of TIERS) {
       expect(zone.venueStyles[t].labelLift).toBeGreaterThan(0);

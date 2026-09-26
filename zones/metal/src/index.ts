@@ -2,6 +2,7 @@
 import type { ZonePlugin } from "@earshot/core";
 import { claims, id } from "./claims.ts";
 import { layout } from "./layout.ts";
+import { createLocals } from "./locals.ts";
 import { createScenery } from "./scenery.ts";
 import { createVenueStyles } from "./venues.ts";
 
@@ -17,6 +18,7 @@ export function createZone(): ZonePlugin {
     venueStyles: createVenueStyles(),
     scenery: createScenery(),
     emotes: [{ id: "horns", label: "Horns up" }],
+    locals: createLocals(),
     theme: { name: "The Forge", background: "#0b0808", accent: "#ff6a2b" },
   };
 }
