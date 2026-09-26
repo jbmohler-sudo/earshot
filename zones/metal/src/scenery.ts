@@ -61,7 +61,7 @@ export function createScenery(): ZoneScenery {
       const flick = f.motion ? 0.75 + 0.25 * Math.sin(f.t * 9) * Math.sin(f.t * 3.1) : 1;
       p.rect(Math.round(mx) - 3, Math.round(my) - 11, 5, 9, hex(255, 110 + 50 * flick, 43));
       p.rect(Math.round(mx) - 2, Math.round(my) - 9, 3, 6, "#ffb347", 0.9);
-      box(p, iso, 5.6, 6.4, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38");
+      box(p, iso, 3.75, 6.45, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38"); // anvil by the door
     },
   });
   // Rocks, kept clear of venue slots and the forge yard.

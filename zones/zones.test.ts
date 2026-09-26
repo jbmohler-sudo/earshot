@@ -1,7 +1,7 @@
 // Contract checks every zone plug-in must pass: sane layout, and every drawing path produces finite,
 // on-canvas geometry with and without motion.
 import { describe, expect, it } from "vitest";
-import type { Frame, Painter, Tier, ZonePlugin } from "../packages/core/src/index.ts";
+import { type Frame, localsToShow, type Painter, spotFor, type Tier, tierOf, type ZonePlugin } from "../packages/core/src/index.ts";
 import { createZone as folk } from "./folk/src/index.ts";
 import { createZone as indie } from "./indie/src/index.ts";
 import { createZone as metal } from "./metal/src/index.ts";
@@ -92,28 +92,36 @@ describe.each(ZONES)("zone %s", (id, create) => {
     expect(box.maxY).toBeLessThan(h + 60);
   });
 
-  it("has 4-6 ambient locals, placed out of every venue crowd's way", () => {
+  it("has six ambient locals, clear of every crowd they can meet", () => {
     const locals = zone.locals ?? [];
-    expect(locals.length).toBeGreaterThanOrEqual(4);
-    expect(locals.length).toBeLessThanOrEqual(6);
+    expect(locals).toHaveLength(6);
     expect(new Set(locals.map((l) => l.id)).size).toBe(locals.length);
-    // Check the resting spot and, for movers, positions along their loop.
-    for (const l of locals) {
-      const spots = [l.at, ...Array.from({ length: 24 }, (_, k) => l.pos?.({ t: k * 1.7, dt: 0.1, motion: true }) ?? l.at)];
-      for (const [x, y] of spots) {
-        expect(x, l.id).toBeGreaterThanOrEqual(layout.bounds.x0);
-        expect(x, l.id).toBeLessThanOrEqual(layout.bounds.x1);
-        expect(y, l.id).toBeGreaterThanOrEqual(layout.bounds.y0);
-        expect(y, l.id).toBeLessThanOrEqual(layout.bounds.y1);
-        for (const [sx, sy] of layout.slots) {
-          const dx = x - sx;
-          const dy = y - sy;
-          const d = Math.hypot(dx, dy);
-          // Crowds fan out toward the viewer (+x+y): keep well clear there, just off the stage behind it.
-          expect(d, `${l.id} vs slot ${sx},${sy}`).toBeGreaterThanOrEqual(dx + dy > 0 ? 8 : 3.2);
+    const HALF: Record<Tier, number> = { busker: 0.5, tavern: 1, amph: 1.5, fest: 2.4 };
+    locals.forEach((l, i) => {
+      // The biggest crowd this local ever shares the zone with (locals thin out as people arrive).
+      let nMax = 0;
+      for (let n = 0; n <= 60; n++) if (localsToShow(n, locals.length) > i) nMax = n;
+      const n = Math.max(1, nMax);
+      const tier = tierOf(n);
+      const path = [l.at, ...Array.from({ length: 40 }, (_, k) => l.pos?.({ t: k * 1.3, dt: 0.1, motion: true }) ?? l.at)];
+      for (const at of layout.slots) {
+        // Every spot that crowd could fill at this venue: front rows and field, both jitter extremes.
+        const crowd: [number, number][] = [];
+        for (const kind of ["front", "field"] as const)
+          for (let idx = 0; idx < n; idx++) for (const j of [0, 0.25]) crowd.push([...spotFor(at, tier, kind, idx, j, layout.bounds)] as [number, number]);
+        for (const [x, y] of path) {
+          expect(Math.max(Math.abs(x - at[0]), Math.abs(y - at[1])), `${l.id} on the ${tier} at ${at}`).toBeGreaterThanOrEqual(HALF[tier] + 0.4);
+          const nearest = Math.min(...crowd.map(([cx, cy]) => Math.hypot(cx - x, cy - y)));
+          expect(nearest, `${l.id} (shown up to ${nMax} people) vs crowd at ${at}`).toBeGreaterThanOrEqual(0.7);
         }
       }
-    }
+      for (const [x, y] of path) {
+        expect(x, l.id).toBeGreaterThanOrEqual(layout.bounds.x0);
+        expect(x, l.id).toBeLessThanOrEqual(layout.bounds.x1);
+        expect(y, l.id).toBeGreaterThanOrEqual(layout.bounds.y0 + 0.4);
+        expect(y, l.id).toBeLessThanOrEqual(layout.bounds.y1);
+      }
+    });
   });
 
   it.each([true, false])("locals draw finite, on-canvas geometry (motion %s)", (motion) => {

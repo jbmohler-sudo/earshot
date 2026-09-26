@@ -2,6 +2,12 @@
 
 > Older Session Log entries, newest first. Live story: [JOURNEY.md](JOURNEY.md).
 
+### 2026-09-26 — Step 7: server-side layout, realtime presence, navigation
+**Did:** World snapshots (`toJSON`/`fromJSON`) and `syncPresence` in core; migration (presence slot, spot_index and display fields; `engagements.artist_key`; `zone_state`); poller runs the layout after every cycle; provisional layouts for the other three zones. Client: Scene model, renderer animates server layout, Realtime feed per zone, follows you on arrival. Navigation: `/world`, logo links, "Enter the world", "You". 75 tests. Live e2e passed: layout within one tick, realtime arrival on an open page, hide → presence gone in 464 ms and the avatar gone from the page within ~2 s, hidden listener stays out.
+**Decided:** See the Decisions Log rows dated 2026-09-26.
+**State after:** Jeff's avatar will appear in the Forge when he plays Metal. Other zones are laid out server-side but not rendered yet.
+**Next:** Jeff's real-listening check, then step 8.
+
 ### 2026-09-25 — Mapper fix + step 6 (world port, PixiJS)
 **Did:** Genre mapper: added a confidence threshold and generic-tag weights, moved the policy to `registry.mapTags`, re-mapped cached artists (Beastie Boys → outskirts), and redeployed the poller. Step 6: core World model plus iso/painter/person/rng; the Forge as the Metal plug-in (seeded map identical to the prototype); the PixiJS renderer and the `/z/[zone]` view with inspector, venues and ladder; the avatar preview now uses core's `drawPerson`. Verified in the browser at desktop and phone widths, and on earshot.world.
 **Decided:** See the Decisions Log rows from "Genre policy lives in" onwards.

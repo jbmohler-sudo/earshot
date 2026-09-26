@@ -61,6 +61,8 @@ export function ZoneView({
       const r = await WorldRenderer.create(host.current, plugin, { reducedMotion, onSelect: (sel) => setSelection(sel) });
       if (cancelled) return r.destroy();
       renderer.current = r;
+      // Development only: lets local scripts grab a snapshot of the view.
+      if (process.env.NODE_ENV === "development") (window as unknown as { __earshot?: WorldRenderer }).__earshot = r;
 
       if (simSize !== null) {
         // Sim: lay the crowd out locally with the same core World the server uses.

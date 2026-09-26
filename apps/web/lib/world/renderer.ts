@@ -3,6 +3,7 @@
 // The layout (who stands at which spot) arrives as a Scene; this file only animates and draws it.
 import { drawPerson, type Frame, localsToShow, makeIso, type Painter, spotFor, spotJitter, type TilePoint, type ZonePlugin } from "@earshot/core";
 import { Application, Container, Graphics, RenderTexture, Sprite, Text, TextStyle } from "pixi.js";
+import { clampCamera, defaultCamera } from "./camera";
 import { PixiPainter } from "./painters";
 import type { PlacedPerson, Scene, SceneVenue } from "./scene";
 import type { PersonSummary, Selection } from "./types";
@@ -135,6 +136,12 @@ export class WorldRenderer {
     this.cleanup.push(() => ro.disconnect());
   }
 
+  /** PNG data URL of the current view (world + labels), rendered on demand; works in background tabs. */
+  async snapshot(): Promise<string> {
+    this.frame(0); // draw the world now: animation frames pause in background tabs
+    return this.app.renderer.extract.base64({ target: this.app.stage, frame: this.app.screen, clearColor: this.zone.theme.background, format: "png" });
+  }
+
   destroy(): void {
     for (const c of this.cleanup) c();
     this.app.destroy(true, { children: true, texture: true });
@@ -259,18 +266,12 @@ export class WorldRenderer {
 
   private fitInitial(): void {
     const { cw, ch } = this.size();
-    this.S = Math.max(2, Math.min(5, Math.floor(Math.min(cw / 300, ch / 190))));
-    const [fx, fy] = this.zone.layout.focus;
-    this.centerOn(fx, fy);
+    ({ S: this.S, camX: this.camX, camY: this.camY } = defaultCamera(this.zone.layout, cw, ch));
   }
 
   private clampCam(): void {
     const { cw, ch } = this.size();
-    const W = this.zone.layout.pixels.w * this.S;
-    const H = this.zone.layout.pixels.h * this.S;
-    const m = 60;
-    this.camX = W < cw ? (cw - W) / 2 : Math.min(m, Math.max(cw - W - m, this.camX));
-    this.camY = H < ch ? (ch - H) / 2 : Math.min(m, Math.max(ch - H - m, this.camY));
+    ({ camX: this.camX, camY: this.camY } = clampCamera({ S: this.S, camX: this.camX, camY: this.camY }, this.zone.layout, cw, ch));
   }
 
   // ---------------------------------------------------------------- frame

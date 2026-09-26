@@ -1,37 +1,41 @@
-// The Forge's locals: people who live here. Scenery, not listeners: muted clothes, no names,
-// never counted. Placed behind venue stages or well clear of their crowds.
-import { box, drawPerson, type Frame, type Look, type Painter, type TilePoint, type ZoneLocal } from "@earshot/core";
-import { iso } from "./scenery.ts";
+// The Forge's locals: people who live here, where the eye goes (forge door, plaza, behind venues).
+// Not listeners: no chest print, no name tag, no ring; never counted. Order matters: the first two
+// stay longest as the zone fills up.
+import { drawPerson, type Frame, type Look, loopAt, type Painter, type TilePoint, type ZoneLocal } from "@earshot/core";
+import { brazier, iso } from "./scenery.ts";
 
-/** Muted palette: dusty, low-contrast clothes and no bright print, so locals read as part of the place. */
+/** Everyday working clothes at listener brightness; the chest print matches the shirt (no accent). */
 const look = (skin: string, hair: string, shirt: string, pants: string, long = false): Look => ({ skin, hair, long, shirt, print: shirt, pants });
-const SMITH = look("#b08a70", "#2a2220", "#4a3e38", "#2e2a2a");
-const TENDER = look("#9a7058", "#3a302a", "#54463c", "#2a2626");
-const HAULER = look("#c0a088", "#4a3a2a", "#5a4e44", "#343030");
-const GAZER = look("#8a6450", "#1e1a18", "#3e3634", "#2a2828", true);
-const WATCHER = look("#a88068", "#5a4a3e", "#4e4440", "#302c2c");
-const SITTER = look("#b89880", "#6a5a4e", "#463e3a", "#2c2a2a", true);
+const SMITH = look("#d9a47c", "#15100e", "#6e4a34", "#2e2a2c");
+const TENDER = look("#b57a52", "#2b1d15", "#4a5a6e", "#26262e");
+const APPRENTICE = look("#f1c7a5", "#8b6a3e", "#7a5a30", "#2e3040", true);
+const HAULER = look("#8a5634", "#15100e", "#4e5e3a", "#2a2a30");
+const PACER = look("#e8b896", "#5a3a1e", "#6e3a3a", "#23283a");
+const SITTER = look("#d9a47c", "#c9b18a", "#3a4a6e", "#2a2320", true);
 
 const at = (x: number, y: number): TilePoint => [x, y];
-function feet([x, y]: TilePoint): [number, number] {
+const feet = ([x, y]: TilePoint): [number, number] => {
   const [cx, cy] = iso(x, y);
   return [Math.round(cx), Math.round(cy)];
-}
-/** A seated figure: a stone or crate to sit on, and the person drawn a few pixels up. */
-function seated(p: Painter, where: TilePoint, l: Look, f: Frame, k: number): void {
-  box(p, iso, where[0] - 0.2, where[1] - 0.2, 0.45, 0.4, 3, "#3b302d", "#2f2523", "#251d1b");
+};
+/** A walking person: legs swing while moving; standing still with reduced motion. */
+function walker(p: Painter, where: TilePoint, l: Look, f: Frame): void {
   const [x, y] = feet(where);
-  const bob = f.motion && Math.sin(f.t * 0.8 + k) > 0.85 ? 1 : 0;
-  drawPerson(p, x, y - 3, l, bob, 0, false);
+  drawPerson(p, x, y, l, 0, f.motion ? (Math.sin(f.t * 9) > 0 ? 1 : -1) : 0, false);
 }
 
 export function createLocals(): ZoneLocal[] {
-  const smithAt = at(6.25, 5.85);
-  const tenderAt = at(17.1, 4.75);
-  const haulerLine: [number, number] = [1.8, 4.6];
-  const haulerPos = (f: Frame): TilePoint =>
-    f.motion ? at(haulerLine[0] + ((haulerLine[1] - haulerLine[0]) * (Math.sin(f.t * 0.32) + 1)) / 2, 7.35) : at(3.2, 7.35);
-  const gazerAt = at(13, 3.65);
+  const smithAt = at(4.75, 6.8);
+  const tenderLoop: TilePoint[] = [at(6.0, 8.8), at(6.0, 11.9), at(4.2, 13.2), at(6.0, 11.9)];
+  const tenderPos = (f: Frame) => (f.motion ? loopAt(tenderLoop, 0.55, f.t) : tenderLoop[0]!);
+  const apprenticeLoop: TilePoint[] = [at(2.4, 9.3), at(4.6, 9.6), at(4.3, 11.6), at(2.6, 11.2)];
+  const apprenticePos = (f: Frame) => (f.motion ? loopAt(apprenticeLoop, 0.4, f.t + 3) : apprenticeLoop[0]!);
+  const haulerLoop: TilePoint[] = [at(6.1, 7.3), at(8.2, 5.9)];
+  const haulerPos = (f: Frame) => (f.motion ? loopAt(haulerLoop, 0.45, f.t) : haulerLoop[0]!);
+  const pacerLoop: TilePoint[] = [at(18.6, 16.4), at(19.9, 15.9), at(19.4, 17.2)];
+  const pacerPos = (f: Frame) => (f.motion ? loopAt(pacerLoop, 0.35, f.t + 1) : pacerLoop[0]!);
+  const sitterAt = at(7.0, 18.7);
+
   return [
     {
       id: "blacksmith",
@@ -41,49 +45,71 @@ export function createLocals(): ZoneLocal[] {
         const swing = f.motion ? Math.sin(f.t * 4.2) : 1;
         const up = swing > 0;
         drawPerson(p, x, y, SMITH, 0, 0, up);
-        // Hammer head above the raised arm, down at the anvil on the strike.
-        if (up) p.rect(x + 3, y - 13, 3, 2, "#6f625c");
-        else p.rect(x + 4, y - 7, 3, 2, "#6f625c");
-        // Sparks just after each strike.
-        if (f.motion && swing < 0 && swing > -0.5) {
-          const [ax, ay] = feet(at(5.95, 6.6));
-          for (let k = 0; k < 3; k++) p.rect(ax + 2 + ((k * 3 + Math.floor(f.t * 20)) % 5) - 2, ay - 7 - k, 1, 1, k % 2 ? "#ffb347" : "#ff6a2b");
+        p.rect(x - 2, y - 6, 5, 3, "#3a2a22"); // leather apron
+        // Hammer raised, then down on the anvil (to the smith's left) with a shower of sparks.
+        if (up) p.rect(x - 5, y - 14, 3, 2, "#8a7e78");
+        else p.rect(x - 7, y - 8, 3, 2, "#8a7e78");
+        if (f.motion && swing < 0 && swing > -0.6) {
+          const [ax, ay] = feet(at(4.1, 6.65));
+          const k0 = Math.floor(f.t * 24);
+          for (let k = 0; k < 5; k++) p.rect(ax - 3 + ((k0 + k * 7) % 7), ay - 7 - ((k0 + k * 3) % 5), 1, 1, k % 2 ? "#ffe1a0" : "#ff6a2b");
         }
       },
     },
     {
       id: "brazier-tender",
-      at: tenderAt,
+      at: tenderLoop[0]!,
+      pos: tenderPos,
       draw(p, f) {
-        const [x, y] = feet(tenderAt);
-        const poke = f.motion ? Math.sin(f.t * 1.3) : 0;
-        drawPerson(p, x, y, TENDER, poke > 0.6 ? 1 : 0, 0, false);
-        // Poker reaching toward the brazier.
-        const reach = Math.round(poke * 2);
-        p.line(x - 3, y - 6, x - 8 - reach, y - 9, 1, "#5e514c");
+        const here = tenderPos(f);
+        walker(p, here, TENDER, f);
+        const [x, y] = feet(here);
+        p.line(x + 3, y - 6, x + 7, y - 11, 1, "#6f625c"); // poker over the shoulder
+        p.rect(x + 6, y - 12, 2, 1, "#ff6a2b");
+      },
+    },
+    {
+      id: "apprentice",
+      at: apprenticeLoop[0]!,
+      pos: apprenticePos,
+      draw(p, f) {
+        const here = apprenticePos(f);
+        walker(p, here, APPRENTICE, f);
+        const [x, y] = feet(here);
+        p.rect(x + 3, y - 7, 1, 7, "#8a6a40"); // broom handle
+        p.rect(x + 2, y, 3, 1, "#c9a24a");
       },
     },
     {
       id: "coal-hauler",
-      at: at(3.2, 7.35),
+      at: haulerLoop[0]!,
       pos: haulerPos,
       draw(p, f) {
-        const [x, y] = feet(haulerPos(f));
-        const walking = f.motion && Math.abs(Math.cos(f.t * 0.32)) > 0.15;
-        drawPerson(p, x, y, HAULER, 0, walking ? (Math.sin(f.t * 9) > 0 ? 1 : -1) : 0, false);
-        p.rect(x - 4, y - 9, 3, 4, "#2a2220"); // coal sack on the back
+        const here = haulerPos(f);
+        walker(p, here, HAULER, f);
+        const [x, y] = feet(here);
+        p.rect(x - 4, y - 10, 4, 4, "#1e1614"); // sack of coal on the back
+        p.rect(x - 3, y - 11, 2, 1, "#2e2622");
       },
     },
     {
-      id: "lava-gazer",
-      at: gazerAt,
+      id: "pacer",
+      at: pacerLoop[0]!,
+      pos: pacerPos,
       draw(p, f) {
-        const [x, y] = feet(gazerAt);
-        drawPerson(p, x, y, GAZER, f.motion && Math.sin(f.t * 0.6) > 0.9 ? 1 : 0, 0, false);
-        p.rect(x - 1, y - 9, 3, 1, "#ff6a2b", 0.25); // lava glow on the face
+        walker(p, pacerPos(f), PACER, f);
       },
     },
-    { id: "watcher", at: at(30.3, 21.5), draw: (p, f) => seated(p, at(30.3, 21.5), WATCHER, f, 1) },
-    { id: "sitter", at: at(1.4, 30.2), draw: (p, f) => seated(p, at(1.4, 30.2), SITTER, f, 2) },
+    {
+      id: "sitter",
+      at: sitterAt,
+      draw(p, f) {
+        // Sitting on a crate by a little brazier of their own.
+        brazier(p, sitterAt[0] + 0.7, sitterAt[1] - 0.2, f, 4);
+        const [x, y] = feet(sitterAt);
+        p.rect(x - 3, y - 3, 6, 3, "#4a3a2e");
+        drawPerson(p, x, y - 3, SITTER, f.motion && Math.sin(f.t * 0.9) > 0.8 ? 1 : 0, 0, false);
+      },
+    },
   ];
 }

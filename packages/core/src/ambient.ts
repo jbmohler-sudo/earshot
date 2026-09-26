@@ -13,3 +13,24 @@ export function localsToShow(people: number, available: number): number {
   else k = 0;
   return Math.max(0, Math.min(available, k));
 }
+
+/** Position after `t` seconds walking a closed loop of tile points at `speed` tiles/s. */
+export function loopAt(path: readonly (readonly [number, number])[], speed: number, t: number): [number, number] {
+  if (path.length === 0) return [0, 0];
+  if (path.length === 1) return [path[0]![0], path[0]![1]];
+  const legs = path.map((a, i) => {
+    const b = path[(i + 1) % path.length]!;
+    return { a, b, len: Math.hypot(b[0] - a[0], b[1] - a[1]) };
+  });
+  const total = legs.reduce((s, l) => s + l.len, 0);
+  if (total === 0) return [path[0]![0], path[0]![1]];
+  let d = (((t * speed) % total) + total) % total;
+  for (const l of legs) {
+    if (d <= l.len) {
+      const u = l.len === 0 ? 0 : d / l.len;
+      return [l.a[0] + (l.b[0] - l.a[0]) * u, l.a[1] + (l.b[1] - l.a[1]) * u];
+    }
+    d -= l.len;
+  }
+  return [path[0]![0], path[0]![1]];
+}
