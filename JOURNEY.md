@@ -5,7 +5,7 @@
 ## Current State
 
 - **Phase:** 1 (real people in the world). Gate to Phase 2: 10 friends connected and coming back on their own.
-- **Done:** Steps 1–7, live at https://earshot.world.
+- **Done:** Steps 1–8, live at https://earshot.world.
   - **Step 1:** scaffold and deploy.
   - **Step 2:** Supabase schema, RLS and grants.
   - **Step 3:** magic-link sign-in, `/me` with name, avatar picker and hide toggle.
@@ -13,8 +13,8 @@
   - **Step 5:** poller Edge Function on a 30 s pg_cron, adaptive polling, and the genre mapper (min confidence 0.35, generic tags down-weighted). Verified with Jeff's real listening.
   - **Step 6:** the prototype world ported into `packages/core` (World model), the Forge as the Metal zone plug-in, and a PixiJS renderer at `/z/metal`. `?sim=N` shows a labelled simulated crowd.
   - **Step 7:** server-side layout into `presence` + Realtime per zone; navigation (`/world`, logo links, "Enter the world", "You").
-- **Waiting on Jeff:** play Metallica, then Fleet Foxes, and confirm the avatar walks into Metal. Fleet Foxes → folk won't be *visible* until step 8, because only the Forge renders; `/world` falls back to `/z/metal` meanwhile.
-- **Next:** Step 8: Indie, Folk and Outskirts worlds (placeholder art OK). Then Resend (`Earshot <hello@earshot.world>`; Jeff does signup + DNS) right before step 9 invites.
+  - **Step 8:** The Lot (Indie), The Hollow (Folk) and The Outskirts as full plug-ins with placeholder art. Stage-song matching now ignores release variants.
+- **Next:** Resend for magic links (`Earshot <hello@earshot.world>`; Jeff does signup + DNS), then step 9: invite 10 friends. Jeff can now confirm Fleet Foxes → The Hollow visually.
 - **Biggest open question:** None blocking.
 
 
@@ -55,6 +55,9 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Presence rows carry display fields (name, avatar, artist, title) | One realtime table drives the view. Nothing new is exposed: the same fields are already readable for visible people. |
 | 2026-09-26 | A zone change is written as delete + insert | Realtime UPDATE filters apply to the new row, so the old zone would never hear about it; DELETEs reach every subscriber |
 | 2026-09-26 | Email: Resend, sender `Earshot <hello@earshot.world>`, set up after step 8 and before step 9 | Jeff's decision; Jeff handles signup + DNS |
+| 2026-09-26 | `item_key` = artistKey\|`songKey(title)`. songKey drops release variants (remaster/live/deluxe/radio edit/mono/single version…), featured artists and punctuation. Display keeps the original title. | A remaster and the original must share the front rows |
+| 2026-09-26 | Zone themes: Indie "The Lot" (warehouse district, rail line), Folk "The Hollow" (forest clearing, creek), Outskirts (desert roadside, highway) | Each back edge animates like the Forge's lava river; placeholder art until Aseprite sheets |
+| 2026-09-26 | Every zone must pass `zones/zones.test.ts` | New zones get layout and drawing sanity checks for free |
 
 ## System Map
 
@@ -72,7 +75,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Server layout:** `packages/core/src/presence-sync.ts` (`syncPresence`), plus `supabase/functions/poller/layout-store.ts`. State lives in `zone_state` (server-only).
 - **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
 - **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
-- **Zones:** `zones/metal` is the full plug-in. `indie`, `folk` and `outskirts` have tag claims and a provisional pure-data `layout.ts`; their worlds come in step 8.
+- **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
@@ -85,6 +88,12 @@ _(nothing yet)_
 _(none; the realtime-channel and layout-location questions were settled in step 7, and email is decided)_
 
 ## Session Log
+
+### 2026-09-26 — Song key fix + step 8 (three new zones)
+**Did:** `songKey()` for stage grouping (18 variant tests), poller redeployed. Built The Lot, The Hollow and The Outskirts as full plug-ins with placeholder art; the client registry has all four zones; per-zone sim artists; a zone contract test. Checked each zone in the browser with a sim crowd and fixed two art problems (lamp light cones read as grey pyramids; drive-in screens weren't in perspective). Poller redeployed with the final layouts. 113 tests.
+**Gotchas:** A Python heredoc turned `` into a literal backspace in one regex; tests caught it. Scanned all tracked files afterwards: no other control characters. Use raw strings for regex edits.
+**State after:** All four zones render at `/z/<zone>`, live and `?sim=N`.
+**Next:** Resend setup, then step 9 invites.
 
 ### 2026-09-26 — Step 7: server-side layout, realtime presence, navigation
 **Did:** World snapshots (`toJSON`/`fromJSON`) and `syncPresence` in core; migration (presence slot, spot_index and display fields; `engagements.artist_key`; `zone_state`); poller runs the layout after every cycle; provisional layouts for the other three zones. Client: Scene model, renderer animates server layout, Realtime feed per zone, follows you on arrival. Navigation: `/world`, logo links, "Enter the world", "You". 75 tests. Live e2e passed: layout within one tick, realtime arrival on an open page, hide → presence gone in 464 ms and the avatar gone from the page within ~2 s, hidden listener stays out.
@@ -105,13 +114,6 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 **Gotchas:** (1) The Supabase MCP is read-only; Vault writes went through a temporary service-role-only RPC, since dropped. (2) The PowerShell tool blocks `Remove-Item $var` on computed paths; use bash `rm` with a literal path. (3) `supabase functions deploy --use-api` bundles imports from outside `supabase/functions` without trouble; it uploads exactly the import graph.
 **State after:** The poller runs every 30 s with 0 errors. Engagements and artist_zones fill when Jeff plays something.
 **Next:** Jeff verifies real listening, then step 6.
-
-### 2026-09-25 — Steps 2–4: schema, auth, Last.fm connect
-**Did:** Two migrations: five tables, RLS, explicit grants, signup and hide triggers, presence in the realtime publication, `is_visible()` in a private schema. Verified with 18 live RLS checks. Built magic-link sign-in, `/me` (name, avatar picker, hide toggle), and the Last.fm connect/disconnect routes. Pushed auth site_url and redirect URLs. Tested locally and on earshot.world with throwaway users, all deleted afterwards.
-**Decided:** See the Decisions Log rows dated 2026-09-25 about grants, anon read, the hide trigger, one Last.fm per account, and the connect cookie.
-**Gotchas:** (1) The Supabase MCP runs SQL read-only, and `supabase test db` needs Docker, which isn't installed. Use the Node smoke script. (2) Piping answers into CLI prompts from PowerShell prefixes a BOM, so `n` isn't read as no and `supabase config push` applied. Pipe from bash instead. (3) TS 6 no longer auto-includes `@types/*`; packages using Node APIs need `"types": ["node"]`. (4) Port 3000 is often taken locally; the umbrella `.claude/launch.json` runs Earshot on 3100.
-**State after:** Everything up to the real Last.fm login is verified. A fake token gets Last.fm error 4 (invalid token), not 13 (invalid signature), so the key and secret are correct in prod.
-**Next:** Jeff connects Last.fm, then step 5.
 
 > Older sessions archived in [JOURNEY_ARCHIVE.md](JOURNEY_ARCHIVE.md).
 
