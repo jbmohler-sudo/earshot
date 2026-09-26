@@ -16,6 +16,9 @@
   - **Step 8:** The Lot (Indie), The Hollow (Folk) and The Outskirts as full plug-ins with placeholder art. Stage-song matching now ignores release variants.
   - **Email:** Resend SMTP (set by Jeff in the Supabase dashboard), DKIM/SPF via Resend's Vercel integration, DMARC `p=none`, branded token_hash templates. Delivery to a non-member address confirmed at the SMTP step.
   - **Gate measurement:** `select * from private.phase1_gate;` in the dashboard SQL editor. Per user: listening days and world-visit days in the last 14, plus last visit.
+  - **Sign-in:** "Sign in with Last.fm" is the primary flow (one approval creates or finds the account and lands you in the world). The email fallback is a 6-digit code typed on the same page. Sessions last 400 days (HttpOnly/Secure cookie, token refreshed by the proxy on every request; measured with `scripts/session-check.mjs`).
+  - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
+- **In progress:** zone-travel transition (walk off, pixel world map hop, title card), with a reusable world-map component for Phase 2.
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
@@ -63,6 +66,10 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Sign-in emails link to `{{ .SiteURL }}/auth/callback?token_hash=…&type=email&next=/me`, not `{{ .ConfirmationURL }}` | The PKCE default only works in the browser that asked; friends open links on their phones |
 | 2026-09-26 | Labels (venue, name tags, plaza) sit on plates in a screen-space layer above the world texture | Legible over any scenery, in every zone |
 | 2026-09-26 | Gate measurement = two day-level logs (`listening_days` via a trigger on engagement writes; `world_visits` via `record_world_visit()` from the zone page) + `private.phase1_gate`. No analytics tools, dates only. | Jeff: just enough to see "connected and returning" |
+| 2026-09-26 | "Sign in with Last.fm" is primary: callback finds the account by linked Last.fm username (email accounts included) or creates one with a placeholder `<name>@lastfm.earshot.world`, then starts the session server-side (admin generateLink → verifyOtp token_hash). Last.fm-only accounts can't disconnect Last.fm. | Friends won't do click-link-switch-app twice; everyone needs Last.fm anyway |
+| 2026-09-26 | Email fallback = 6-digit code typed on the same page (`otp_length = 6`, templates show `{{ .Token }}`) | No app switching |
+| 2026-09-26 | Auth cookies: HttpOnly, Secure in prod, 400-day Max-Age renewed on each refresh. The browser Supabase client is stateless (no persist/refresh). | Safari caps JS-written cookies at 7 days; HttpOnly keeps tokens away from page scripts |
+| 2026-09-26 | Zone URLs = `/<genre id>`; place names are display only. `RESERVED_PATHS` + `lib/world/zones.test.ts` keep zone ids and page folders from colliding. | Short, shareable links |
 | 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
 
 ## System Map
@@ -77,8 +84,10 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Genre mapper:** `zones/*/src/claims.ts` (tag lists), `zones/registry.ts` (`mapTags`: threshold + tag weights), `zones/overrides.json`. Scoring is in `packages/core/src/zones.ts`. Re-map cached artists with `apps/web/scripts/remap-artists.ts [--dry-run]`.
 - **World model:** `packages/core/src/world.ts` (`World.update(participants)` → venues, slots, stage item, placements), plus `iso.ts`, `painter.ts`, `person.ts` and `rng.ts`.
 - **Metal zone:** `zones/metal/src/{layout,scenery,venues,claims}.ts`; `createZone()` returns the `ZonePlugin`.
-- **Renderer:** `apps/web/lib/world/renderer.ts` (PixiJS, animates a `Scene`), with `scene.ts` (Scene from presence rows or a local World), `presence-feed.ts` (Realtime `zone:<id>`), `painters.ts`, `canvas-painter.ts`, `sim.ts` and `zones.ts` (the client zone registry). The page is `apps/web/app/z/[zone]/`.
+- **Renderer:** `apps/web/lib/world/renderer.ts` (PixiJS, animates a `Scene`), with `scene.ts` (Scene from presence rows or a local World), `presence-feed.ts` (Realtime `zone:<id>`), `painters.ts`, `canvas-painter.ts`, `sim.ts` and `zones.ts` (the client zone registry). The page is `apps/web/app/[zone]/` (served at `/<zone id>`).
 - **Server layout:** `packages/core/src/presence-sync.ts` (`syncPresence`), plus `supabase/functions/poller/layout-store.ts`. State lives in `zone_state` (server-only).
+- **Sign-in:** `app/login/` (Last.fm button + email code), `app/api/auth/lastfm/{start,callback}` (login and connect modes), `lib/lastfm-login.ts`, `lib/lastfm-identity.ts` (flow cookie, placeholder email). Local end-to-end testing: `scripts/lastfm-mock.mjs` + `LASTFM_MOCK_URL` (dev only).
+- **Session check:** `apps/web/scripts/session-check.mjs [base URL]`.
 - **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
 - **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
 - **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
@@ -95,6 +104,12 @@ _(nothing yet)_
 _(none; the realtime-channel and layout-location questions were settled in step 7, and email is decided)_
 
 ## Session Log
+
+### 2026-09-26 — Sign-in rework, long sessions, short zone URLs
+**Did:** "Sign in with Last.fm" as the primary login (login/connect modes, find-or-create by linked username, server-side session start); 6-digit email codes on the same page; `/me` and home lead with the Last.fm button. Stateless browser Supabase client plus HttpOnly/Secure 400-day cookies; measured in prod with `scripts/session-check.mjs` (expired access token refreshed silently, refresh token rotated). Tested every path locally against a Last.fm mock on desktop and phone: new user, returning user, existing email account matched by username, connect, taken, forged callback, wrong and right email codes. Zone URLs shortened to `/<zone id>` with permanent redirects and a reserved-path test. All test accounts deleted.
+**Gotchas:** A Vercel deploy can report Ready for the previous build while the newest is still building; check `vercel ls` before testing prod.
+**State after:** Only Jeff's account exists. Login friction is down to one approval.
+**Next:** Zone-travel transition, then step 9 invites.
 
 ### 2026-09-26 — Label plates, email branding, DMARC
 **Did:** Jeff verified all three genre routes. Put labels on plates above the world texture (fixes a busker label that read as hidden behind a lantern in The Hollow). Added `_dmarc` TXT `v=DMARC1; p=none;` via the Vercel CLI. Branded magic-link and confirmation templates using token_hash links, pushed with `supabase config push` (diff previewed first: templates only, SMTP untouched). Sent a test sign-in to `jbmohler+earshot-test@gmail.com`; the auth log shows it accepted with no SMTP error. Custom SMTP had already moved the email limit from 2/h to 30/h.
@@ -114,13 +129,6 @@ Jeff confirmed the email landed in the inbox and the link works; the alias accou
 **Decided:** See the Decisions Log rows dated 2026-09-26.
 **State after:** Jeff's avatar will appear in the Forge when he plays Metal. Other zones are laid out server-side but not rendered yet.
 **Next:** Jeff's real-listening check, then step 8.
-
-### 2026-09-25 — Mapper fix + step 6 (world port, PixiJS)
-**Did:** Genre mapper: added a confidence threshold and generic-tag weights, moved the policy to `registry.mapTags`, re-mapped cached artists (Beastie Boys → outskirts), and redeployed the poller. Step 6: core World model plus iso/painter/person/rng; the Forge as the Metal plug-in (seeded map identical to the prototype); the PixiJS renderer and the `/z/[zone]` view with inspector, venues and ladder; the avatar preview now uses core's `drawPerson`. Verified in the browser at desktop and phone widths, and on earshot.world.
-**Decided:** See the Decisions Log rows from "Genre policy lives in" onwards.
-**Gotchas:** (1) Node's type stripping rejects parameter properties, hence `erasableSyntaxOnly`. (2) The in-app browser's click coordinates are in the screenshot's own frame, not the viewport's.
-**State after:** `/z/metal?sim=130` shows the full Forge. The real `/z/metal` is empty until step 7.
-**Next:** Step 7, realtime presence.
 
 > Older sessions archived in [JOURNEY_ARCHIVE.md](JOURNEY_ARCHIVE.md).
 

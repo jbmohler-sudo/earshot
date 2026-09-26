@@ -2,6 +2,13 @@
 
 > Older Session Log entries, newest first. Live story: [JOURNEY.md](JOURNEY.md).
 
+### 2026-09-25 — Mapper fix + step 6 (world port, PixiJS)
+**Did:** Genre mapper: added a confidence threshold and generic-tag weights, moved the policy to `registry.mapTags`, re-mapped cached artists (Beastie Boys → outskirts), and redeployed the poller. Step 6: core World model plus iso/painter/person/rng; the Forge as the Metal plug-in (seeded map identical to the prototype); the PixiJS renderer and the `/z/[zone]` view with inspector, venues and ladder; the avatar preview now uses core's `drawPerson`. Verified in the browser at desktop and phone widths, and on earshot.world.
+**Decided:** See the Decisions Log rows from "Genre policy lives in" onwards.
+**Gotchas:** (1) Node's type stripping rejects parameter properties, hence `erasableSyntaxOnly`. (2) The in-app browser's click coordinates are in the screenshot's own frame, not the viewport's.
+**State after:** `/z/metal?sim=130` shows the full Forge. The real `/z/metal` is empty until step 7.
+**Next:** Step 7, realtime presence.
+
 ### 2026-09-25 — Last.fm connect fix + step 5 (poller, genre mapper)
 **Did:** Fixed the Last.fm callback: the strict token regex rejected real tokens. Added permanent per-exit logging, and Jeff connected as MightyZaino. Built the poller: core schedule, rate gate and zone scoring; the sources API and poll loop; zone claims, registry and overrides; three migrations (poll columns + lease RPC, cron job, cron-history cleanup); the Edge Function with secrets in Vault and function secrets. 45 tests pass, including 150 simulated accounts at ≤4 req/s. Found and fixed a 60 s real cadence caused by cron jitter.
 **Decided:** See the Decisions Log rows dated 2026-09-25 from "Last.fm token check" onwards.
