@@ -19,6 +19,7 @@
   - **Sign-in:** "Sign in with Last.fm" is the primary flow (one approval creates or finds the account and lands you in the world). The email fallback is a 6-digit code typed on the same page. Sessions last 400 days (HttpOnly/Secure cookie, token refreshed by the proxy on every request; measured with `scripts/session-check.mjs`).
   - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
   - **Zone travel:** your own avatar changing zones while you follow it plays walk-off → world-map hop → title card → walk-in (~2.5 s). Otherwise you get a toast with a Follow button. Reduced motion gets a crossfade and the title card. The world map is a reusable component for Phase 2.
+  - **Ambient locals:** 4–6 per zone doing idle loops. They thin out as real people arrive and are never counted.
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
@@ -72,6 +73,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Zone URLs = `/<genre id>`; place names are display only. `RESERVED_PATHS` + `lib/world/zones.test.ts` keep zone ids and page folders from colliding. | Short, shareable links |
 | 2026-09-26 | Zone travel triggers from a second Realtime subscription on your own presence row (`me:<id>`). The full transition plays only when you were in the viewed zone and following yourself (`travelMode`); otherwise a toast. Phases run on timers, not rAF. | Never hijack the camera; background tabs stop animation frames |
 | 2026-09-26 | World map = `components/world-map.tsx` + `lib/world/map.ts` (Painter drawing, landmarks, dotted roads, hop), with optional clickable landmarks | Phase 2 map/teleport reuses it |
+| 2026-09-26 | Ambient locals are zone scenery (`ZonePlugin.locals`, drawn by the renderer), never part of a Scene, presence, venues, tiers or counts, and never stored. Muted palette, no tag or ring; a tap says only "Local · lives here". Density 6 → 2 at 10 people → 0 at 50. | Empty zones shouldn't feel dead, but listeners must never be faked |
 | 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
 
 ## System Map
@@ -90,6 +92,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Server layout:** `packages/core/src/presence-sync.ts` (`syncPresence`), plus `supabase/functions/poller/layout-store.ts`. State lives in `zone_state` (server-only).
 - **Sign-in:** `app/login/` (Last.fm button + email code), `app/api/auth/lastfm/{start,callback}` (login and connect modes), `lib/lastfm-login.ts`, `lib/lastfm-identity.ts` (flow cookie, placeholder email). Local end-to-end testing: `scripts/lastfm-mock.mjs` + `LASTFM_MOCK_URL` (dev only).
 - **Session check:** `apps/web/scripts/session-check.mjs [base URL]`.
+- **Ambient locals:** `zones/*/src/locals.ts`, `packages/core/src/ambient.ts` (`localsToShow`), and the renderer's locals pass (fade, tap). The contract test in `zones/zones.test.ts` keeps them clear of venue crowds and static under reduced motion.
 - **Zone travel:** `components/zone-travel.tsx` (overlay, title card, arrival curtain), `components/world-map.tsx`, `lib/world/{map,travel}.ts`, renderer `depart()` plus arrival spawn, and `presence-feed.ts` `subscribeSelf`. Preview: `/<zone>?sim=40&travel=<other zone>`.
 - **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
 - **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
@@ -113,6 +116,7 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 **Gotchas:** A Vercel deploy can report Ready for the previous build while the newest is still building; check `vercel ls` before testing prod.
 **State after:** Only Jeff's account exists. Login friction is down to one approval.
 Then the zone-travel transition and the reusable world map. Verified with the sim preview (desktop and phone, reduced motion) and with a real trip through the live poller: a throwaway user moved folk → metal plays the whole thing and lands following itself; viewing another zone gives the toast and Follow works. The overlay first ran on rAF and froze in the hidden browser pane, so it moved to timers.
+Then ambient locals: 4–6 per zone, client-side only, density from `localsToShow()`. Checked in the browser (all four zones empty, a tap on a local, sim 20 and sim 60 counts exact) and in the DB (presence and the gate view unchanged). Vitest now knows apps/web's `@/` alias.
 **Next:** Step 9 invites.
 
 ### 2026-09-26 — Label plates, email branding, DMARC
