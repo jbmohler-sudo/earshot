@@ -14,7 +14,9 @@
   - **Step 6:** the prototype world ported into `packages/core` (World model), the Forge as the Metal zone plug-in, and a PixiJS renderer at `/z/metal`. `?sim=N` shows a labelled simulated crowd.
   - **Step 7:** server-side layout into `presence` + Realtime per zone; navigation (`/world`, logo links, "Enter the world", "You").
   - **Step 8:** The Lot (Indie), The Hollow (Folk) and The Outskirts as full plug-ins with placeholder art. Stage-song matching now ignores release variants.
-- **Next:** Resend for magic links (`Earshot <hello@earshot.world>`; Jeff does signup + DNS), then step 9: invite 10 friends. Jeff can now confirm Fleet Foxes → The Hollow visually.
+  - **Email:** Resend SMTP (set by Jeff in the Supabase dashboard), DKIM/SPF via Resend's Vercel integration, DMARC `p=none`, branded token_hash templates. Delivery to a non-member address confirmed at the SMTP step.
+- **Waiting on Jeff:** confirm the test email arrived in the inbox (not spam). Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
+- **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own.
 - **Biggest open question:** None blocking.
 
 
@@ -58,6 +60,9 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | `item_key` = artistKey\|`songKey(title)`. songKey drops release variants (remaster/live/deluxe/radio edit/mono/single version…), featured artists and punctuation. Display keeps the original title. | A remaster and the original must share the front rows |
 | 2026-09-26 | Zone themes: Indie "The Lot" (warehouse district, rail line), Folk "The Hollow" (forest clearing, creek), Outskirts (desert roadside, highway) | Each back edge animates like the Forge's lava river; placeholder art until Aseprite sheets |
 | 2026-09-26 | Every zone must pass `zones/zones.test.ts` | New zones get layout and drawing sanity checks for free |
+| 2026-09-26 | Sign-in emails link to `{{ .SiteURL }}/auth/callback?token_hash=…&type=email&next=/me`, not `{{ .ConfirmationURL }}` | The PKCE default only works in the browser that asked; friends open links on their phones |
+| 2026-09-26 | Labels (venue, name tags, plaza) sit on plates in a screen-space layer above the world texture | Legible over any scenery, in every zone |
+| 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
 
 ## System Map
 
@@ -89,6 +94,12 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 
 ## Session Log
 
+### 2026-09-26 — Label plates, email branding, DMARC
+**Did:** Jeff verified all three genre routes. Put labels on plates above the world texture (fixes a busker label that read as hidden behind a lantern in The Hollow). Added `_dmarc` TXT `v=DMARC1; p=none;` via the Vercel CLI. Branded magic-link and confirmation templates using token_hash links, pushed with `supabase config push` (diff previewed first: templates only, SMTP untouched). Sent a test sign-in to `jbmohler+earshot-test@gmail.com`; the auth log shows it accepted with no SMTP error. Custom SMTP had already moved the email limit from 2/h to 30/h.
+**Gotchas:** `rate_limit.email_sent` only syncs when SMTP is enabled in the local config, which it deliberately isn't (the key stays in the dashboard). Raise it in the dashboard if needed.
+**State after:** Ready for step 9 once Jeff confirms the test email landed in the inbox. The alias account exists (unconfirmed until clicked); delete it after the test.
+**Next:** Step 9 invites.
+
 ### 2026-09-26 — Song key fix + step 8 (three new zones)
 **Did:** `songKey()` for stage grouping (18 variant tests), poller redeployed. Built The Lot, The Hollow and The Outskirts as full plug-ins with placeholder art; the client registry has all four zones; per-zone sim artists; a zone contract test. Checked each zone in the browser with a sim crowd and fixed two art problems (lamp light cones read as grey pyramids; drive-in screens weren't in perspective). Poller redeployed with the final layouts. 113 tests.
 **Gotchas:** A Python heredoc turned the regex word boundary (backslash-b) into a literal backspace in one regex; tests caught it. Scanned all tracked files afterwards: no other control characters. Use raw strings for regex edits.
@@ -107,13 +118,6 @@ _(none; the realtime-channel and layout-location questions were settled in step 
 **Gotchas:** (1) Node's type stripping rejects parameter properties, hence `erasableSyntaxOnly`. (2) The in-app browser's click coordinates are in the screenshot's own frame, not the viewport's.
 **State after:** `/z/metal?sim=130` shows the full Forge. The real `/z/metal` is empty until step 7.
 **Next:** Step 7, realtime presence.
-
-### 2026-09-25 — Last.fm connect fix + step 5 (poller, genre mapper)
-**Did:** Fixed the Last.fm callback: the strict token regex rejected real tokens. Added permanent per-exit logging, and Jeff connected as MightyZaino. Built the poller: core schedule, rate gate and zone scoring; the sources API and poll loop; zone claims, registry and overrides; three migrations (poll columns + lease RPC, cron job, cron-history cleanup); the Edge Function with secrets in Vault and function secrets. 45 tests pass, including 150 simulated accounts at ≤4 req/s. Found and fixed a 60 s real cadence caused by cron jitter.
-**Decided:** See the Decisions Log rows dated 2026-09-25 from "Last.fm token check" onwards.
-**Gotchas:** (1) The Supabase MCP is read-only; Vault writes went through a temporary service-role-only RPC, since dropped. (2) The PowerShell tool blocks `Remove-Item $var` on computed paths; use bash `rm` with a literal path. (3) `supabase functions deploy --use-api` bundles imports from outside `supabase/functions` without trouble; it uploads exactly the import graph.
-**State after:** The poller runs every 30 s with 0 errors. Engagements and artist_zones fill when Jeff plays something.
-**Next:** Jeff verifies real listening, then step 6.
 
 > Older sessions archived in [JOURNEY_ARCHIVE.md](JOURNEY_ARCHIVE.md).
 
