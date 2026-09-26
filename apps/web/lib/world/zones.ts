@@ -15,3 +15,20 @@ export const ZONES: Record<string, { name: string; create: () => ZonePlugin; sim
 };
 
 export const isZoneId = (id: string): boolean => Object.hasOwn(ZONES, id);
+
+/**
+ * Zones are served at the top level (earshot.world/<zone id>), so zone ids and page paths share one
+ * namespace. These first segments belong to pages (or are held for likely ones) and can never be zone
+ * ids; zone ids in turn must never be used for a page. lib/world/zones.test.ts enforces both.
+ */
+export const RESERVED_PATHS = [
+  // pages and routes that exist
+  "api", "auth", "login", "me", "world", "z",
+  // held for later
+  "about", "admin", "app", "help", "invite", "legal", "logout", "map", "privacy", "settings", "signup", "static", "terms", "u", "user", "users", "zone", "zones",
+  // framework and well-known
+  "_next", "favicon.ico", "robots.txt", "sitemap.xml", ".well-known",
+] as const;
+
+/** URL for a zone. The genre id is the URL; place names like "The Forge" are display only. */
+export const zoneHref = (zoneId: string): string => `/${zoneId}`;

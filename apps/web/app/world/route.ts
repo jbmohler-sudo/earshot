@@ -8,5 +8,5 @@ export async function GET(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const zone = await currentZone(data.user?.id ?? null);
   const welcome = request.nextUrl.searchParams.has("welcome") ? "?welcome=1" : "";
-  return NextResponse.redirect(new URL(`/z/${zone}${welcome}`, request.nextUrl.origin));
+  return NextResponse.redirect(new URL(`/${zone}${welcome}`, request.nextUrl.origin));
 }
