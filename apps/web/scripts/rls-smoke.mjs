@@ -57,6 +57,9 @@ try {
   check(denied(await anon.from("artist_zones").select("*")), "anon cannot read artist_zones");
   check(denied(await anon.from("presence").insert({ user_id: a.id, zone_id: "x", artist_key: "x", spot: "plaza" })), "anon cannot write presence");
   check(denied(await anon.from("zone_state").select("*")), "anon cannot read zone_state");
+  check(denied(await anon.from("world_visits").select("*")), "anon cannot read world_visits");
+  check(denied(await anon.from("listening_days").select("*")), "anon cannot read listening_days");
+  check(!!(await anon.rpc("record_world_visit")).error, "anon cannot record a world visit");
   r = await anon.rpc("is_visible", { uid: a.id });
   check(!!r.error, "is_visible is not callable over the API");
 
@@ -65,6 +68,13 @@ try {
   check(denied(await a.client.from("profiles").update({ created_at: new Date().toISOString() }).eq("id", a.id)), "only display_name/avatar/visible are updatable");
   check(denied(await a.client.from("engagements").insert({ user_id: a.id, source: "lastfm", item_key: "k", title: "t", artist: "x" })), "signed-in user cannot write engagements");
   check(denied(await a.client.from("presence").delete().eq("user_id", b.id)), "signed-in user cannot delete presence");
+  check(denied(await a.client.from("world_visits").select("*")), "signed-in user cannot read world_visits");
+  check(denied(await a.client.from("world_visits").insert({ user_id: b.id, visited_on: "2026-01-01" })), "signed-in user cannot write someone else's visit");
+  check(!(await a.client.rpc("record_world_visit")).error && !(await a.client.rpc("record_world_visit")).error, "signed-in user can record their own visit (twice, idempotent)");
+  r = await admin.from("world_visits").select("user_id").in("user_id", [a.id, b.id]);
+  check(r.data?.length === 1 && r.data[0].user_id === a.id, "exactly one visit row, for the caller only");
+  r = await admin.from("listening_days").select("user_id").eq("user_id", a.id);
+  check(r.data?.length === 1, "an engagement write records a listening day");
 
   await a.client.from("profiles").update({ display_name: "hijack" }).eq("id", b.id);
   r = await admin.from("profiles").select("display_name").eq("id", b.id).single();

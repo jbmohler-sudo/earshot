@@ -85,6 +85,29 @@ export type Database = {
           },
         ]
       }
+      listening_days: {
+        Row: {
+          day: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presence: {
         Row: {
           artist_key: string
@@ -203,6 +226,29 @@ export type Database = {
           },
         ]
       }
+      world_visits: {
+        Row: {
+          user_id: string
+          visited_on: string
+        }
+        Insert: {
+          user_id: string
+          visited_on: string
+        }
+        Update: {
+          user_id?: string
+          visited_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_visits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zone_state: {
         Row: {
           state: Json
@@ -236,6 +282,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      record_world_visit: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

@@ -19,5 +19,8 @@ export default async function ZonePage({ params, searchParams }: { params: Promi
   const simSize = sim === undefined ? null : Math.max(20, Math.min(260, Number.parseInt(sim, 10) || 130));
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
+  // Phase 1 gate: log that this person opened the world today (one row per day; demos don't count).
+  // Never block the page on it.
+  if (data.user && simSize === null) await supabase.rpc("record_world_visit").then(undefined, () => {});
   return <ZoneView zoneId={zone} simSize={simSize} viewerId={data.user?.id ?? null} />;
 }
