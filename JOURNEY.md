@@ -5,15 +5,17 @@
 ## Current State
 
 - **Phase:** 1 (real people in the world). Gate to Phase 2: 10 friends connected and coming back on their own.
-- **Done:** Steps 1–6, live at https://earshot.world.
+- **Done:** Steps 1–7, live at https://earshot.world.
   - **Step 1:** scaffold and deploy.
   - **Step 2:** Supabase schema, RLS and grants.
   - **Step 3:** magic-link sign-in, `/me` with name, avatar picker and hide toggle.
   - **Step 4:** Last.fm connect, verified by Jeff as MightyZaino.
   - **Step 5:** poller Edge Function on a 30 s pg_cron, adaptive polling, and the genre mapper (min confidence 0.35, generic tags down-weighted). Verified with Jeff's real listening.
   - **Step 6:** the prototype world ported into `packages/core` (World model), the Forge as the Metal zone plug-in, and a PixiJS renderer at `/z/metal`. `?sim=N` shows a labelled simulated crowd.
-- **Next:** Step 7: realtime presence. The server writes `presence`, clients subscribe per zone, and the real `/z/metal` shows real people.
-- **Biggest open question:** Where slot assignment runs in step 7 (see Open Questions).
+  - **Step 7:** server-side layout into `presence` + Realtime per zone; navigation (`/world`, logo links, "Enter the world", "You").
+- **Waiting on Jeff:** play Metallica, then Fleet Foxes, and confirm the avatar walks into Metal. Fleet Foxes → folk won't be *visible* until step 8, because only the Forge renders; `/world` falls back to `/z/metal` meanwhile.
+- **Next:** Step 8: Indie, Folk and Outskirts worlds (placeholder art OK). Then Resend (`Earshot <hello@earshot.world>`; Jeff does signup + DNS) right before step 9 invites.
+- **Biggest open question:** None blocking.
 
 
 ## The Story So Far
@@ -49,6 +51,10 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-25 | Zones draw through core's `Painter` interface, never PixiJS directly | Zones stay renderer-agnostic and Deno-importable; the web app supplies `PixiPainter` and `canvasPainter` |
 | 2026-09-25 | Renderer draws the scene in art pixels into a nearest-filtered RenderTexture, then scales it by an integer factor | Reproduces the prototype's pixel look exactly; labels are screen-space Pixi Text so they stay crisp |
 | 2026-09-25 | Simulated crowd only behind `?sim=N`, labelled "Simulated crowd", never mixed with real people | Needed to see festivals before 50 real users exist; people-first means no fake crowds in the real view |
+| 2026-09-26 | Layout is server-side: after each poll cycle the poller runs `World` per zone (`syncPresence`) and writes presence (zone, artist, spot, slot, spot_index). Layout history persists in `zone_state`. Clients only animate. | Jeff's call: everyone sees the same world, and hysteresis survives restarts |
+| 2026-09-26 | Presence rows carry display fields (name, avatar, artist, title) | One realtime table drives the view. Nothing new is exposed: the same fields are already readable for visible people. |
+| 2026-09-26 | A zone change is written as delete + insert | Realtime UPDATE filters apply to the new row, so the old zone would never hear about it; DELETEs reach every subscriber |
+| 2026-09-26 | Email: Resend, sender `Earshot <hello@earshot.world>`, set up after step 8 and before step 9 | Jeff's decision; Jeff handles signup + DNS |
 
 ## System Map
 
@@ -62,8 +68,11 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Genre mapper:** `zones/*/src/claims.ts` (tag lists), `zones/registry.ts` (`mapTags`: threshold + tag weights), `zones/overrides.json`. Scoring is in `packages/core/src/zones.ts`. Re-map cached artists with `apps/web/scripts/remap-artists.ts [--dry-run]`.
 - **World model:** `packages/core/src/world.ts` (`World.update(participants)` → venues, slots, stage item, placements), plus `iso.ts`, `painter.ts`, `person.ts` and `rng.ts`.
 - **Metal zone:** `zones/metal/src/{layout,scenery,venues,claims}.ts`; `createZone()` returns the `ZonePlugin`.
-- **Renderer:** `apps/web/lib/world/renderer.ts` (PixiJS), with `painters.ts`, `canvas-painter.ts`, `sim.ts` and `zones.ts` (the client zone registry). The page is `apps/web/app/z/[zone]/`.
-- **Zones:** `zones/metal` is the full plug-in. `indie`, `folk` and `outskirts` have tag claims only; their worlds come in step 8.
+- **Renderer:** `apps/web/lib/world/renderer.ts` (PixiJS, animates a `Scene`), with `scene.ts` (Scene from presence rows or a local World), `presence-feed.ts` (Realtime `zone:<id>`), `painters.ts`, `canvas-painter.ts`, `sim.ts` and `zones.ts` (the client zone registry). The page is `apps/web/app/z/[zone]/`.
+- **Server layout:** `packages/core/src/presence-sync.ts` (`syncPresence`), plus `supabase/functions/poller/layout-store.ts`. State lives in `zone_state` (server-only).
+- **Navigation:** `/world` (redirects to your current zone, via `lib/world/where.ts`), the logo links, "Enter the world" on `/me`, and "You" in the world header.
+- **Live e2e:** `apps/web/scripts/presence-e2e.mjs [holdSeconds]` runs throwaway listeners through the real poller: layout, realtime and hide. Cleans up after itself.
+- **Zones:** `zones/metal` is the full plug-in. `indie`, `folk` and `outskirts` have tag claims and a provisional pure-data `layout.ts`; their worlds come in step 8.
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
@@ -73,11 +82,15 @@ _(nothing yet)_
 
 ## Open Questions
 
-- Realtime per-zone channels: a `postgres_changes` filter on `zone_id` won't tell the old zone when someone moves zones. Broadcast vs. filter is decided in step 7.
-- Where slot assignment runs. `presence.spot` (stage/field/plaza) depends on slots, but slots carry hysteresis, so clients that joined at different times could disagree. Option A: the server runs `World` each poll cycle and writes the spot (and maybe the slot). Option B: clients run `World` from a snapshot. Decide in step 7.
-- Custom SMTP provider for magic links before inviting friends (Resend?), and the sender domain.
+_(none; the realtime-channel and layout-location questions were settled in step 7, and email is decided)_
 
 ## Session Log
+
+### 2026-09-26 — Step 7: server-side layout, realtime presence, navigation
+**Did:** World snapshots (`toJSON`/`fromJSON`) and `syncPresence` in core; migration (presence slot, spot_index and display fields; `engagements.artist_key`; `zone_state`); poller runs the layout after every cycle; provisional layouts for the other three zones. Client: Scene model, renderer animates server layout, Realtime feed per zone, follows you on arrival. Navigation: `/world`, logo links, "Enter the world", "You". 75 tests. Live e2e passed: layout within one tick, realtime arrival on an open page, hide → presence gone in 464 ms and the avatar gone from the page within ~2 s, hidden listener stays out.
+**Decided:** See the Decisions Log rows dated 2026-09-26.
+**State after:** Jeff's avatar will appear in the Forge when he plays Metal. Other zones are laid out server-side but not rendered yet.
+**Next:** Jeff's real-listening check, then step 8.
 
 ### 2026-09-25 — Mapper fix + step 6 (world port, PixiJS)
 **Did:** Genre mapper: added a confidence threshold and generic-tag weights, moved the policy to `registry.mapTags`, re-mapped cached artists (Beastie Boys → outskirts), and redeployed the poller. Step 6: core World model plus iso/painter/person/rng; the Forge as the Metal plug-in (seeded map identical to the prototype); the PixiJS renderer and the `/z/[zone]` view with inspector, venues and ladder; the avatar preview now uses core's `drawPerson`. Verified in the browser at desktop and phone widths, and on earshot.world.
@@ -100,12 +113,7 @@ _(nothing yet)_
 **State after:** Everything up to the real Last.fm login is verified. A fake token gets Last.fm error 4 (invalid token), not 13 (invalid signature), so the key and secret are correct in prod.
 **Next:** Jeff connects Last.fm, then step 5.
 
-### 2026-09-25 — Step 1: scaffold + deploy
-**Did:** Moved the brief and prototype into `docs/`. Scaffolded the pnpm monorepo per the brief's layout. Wrote a placeholder page styled from the prototype's palette. `pnpm test` (7 passing), `pnpm typecheck`, and `pnpm build` all pass on Windows. Scanned history for secrets (clean) and widened `.gitignore` to `.env*`. Created the public GitHub repo and the Vercel project. Deployed to production and attached `earshot.world` + `www`.
-**Decided:** TS 6.0 pin, TS-source workspace packages, music-free `Engagement` fields, LF line endings.
-**Gotcha:** The Vercel MCP connector returns 403 on project create/update for this team. Use the CLI instead: `vercel link`, `vercel domains add`, and `vercel api <endpoint> -X PATCH` for settings like `rootDirectory`.
-**State after:** Placeholder live on earshot.world.
-**Next:** Check in with Jeff, then step 2 (Supabase).
+> Older sessions archived in [JOURNEY_ARCHIVE.md](JOURNEY_ARCHIVE.md).
 
 ## Hard Rules
 
@@ -115,3 +123,4 @@ _(nothing yet)_
 - Run pnpm/next natively on Windows, not in a Linux sandbox.
 - Migrations go through `supabase/migrations` + `supabase db push`. Every new client-readable table needs explicit GRANTs. Never grant anything on `source_accounts`.
 - Run `apps/web/scripts/rls-smoke.mjs` after every migration.
+- Only the poller writes `presence` (via `syncPresence`), apart from the hide trigger's delete. Don't write presence from the web app.
