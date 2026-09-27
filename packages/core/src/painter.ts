@@ -1,6 +1,7 @@
 // Renderer-agnostic drawing surface in art pixels. Zones draw through this, so they never import a
 // graphics library; the web app backs it with PixiJS (and a 2D canvas for small previews).
 import type { Iso } from "./iso.ts";
+import type { SpriteSheet } from "./sprites.ts";
 
 export type Color = string; // "#rrggbb"
 
@@ -11,6 +12,11 @@ export interface Painter {
   line(x0: number, y0: number, x1: number, y1: number, width: number, color: Color, alpha?: number): void;
   /** Additive light (beams, glows). Drawn above the normal layer. */
   glow(points: number[], color: Color, alpha: number): void;
+  /**
+   * Blit a sprite frame with its anchor at (x, y), in the normal layer's draw order. Optional:
+   * painters without it (tests, recorders) get the procedural fallback through drawSprite().
+   */
+  sprite?(sheet: SpriteSheet, frame: string, x: number, y: number, alpha?: number): void;
 }
 
 export const hex = (r: number, g: number, b: number): Color =>

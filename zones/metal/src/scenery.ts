@@ -1,9 +1,45 @@
 // The Forge's ground, lava, props and smoke. Ported from the Phase 0 prototype; the seeded RNG is
-// consumed in the same order, so the map is identical.
-import { box, diamond, type Frame, hex, makeIso, mulberry32, type Painter, type Prop, type ZoneScenery } from "@earshot/core";
+// consumed in the same order, so the map is identical. Six props have pre-rendered sprites
+// (/sprites/metal/*). Old props fall back to their procedural drawing and new ones to nothing, so the
+// zone looks exactly as before whenever a sheet isn't loaded.
+import { box, diamond, drawSprite, type Frame, getSheet, hex, makeIso, mulberry32, type Painter, type Prop, type ZoneScenery } from "@earshot/core";
+import { id } from "./claims.ts";
 import { layout, N, nearSlot, riverTiles } from "./layout.ts";
 
 export const iso = makeIso(layout.origin);
+
+/** Sprite sheets the Forge is wired to draw (the app loads /sprites/metal/<name>.png + .json). */
+export const SPRITES = ["forge", "brazier", "anvil", "chimney", "barrel", "toolrack"] as const;
+type SpriteName = (typeof SPRITES)[number];
+/**
+ * The sheets the zone actually asks the app to load; the rest keep drawing procedurally. brazier, anvil,
+ * barrel and toolrack are wired but held back: their renders were normalized to 64 px tall (a brazier
+ * would stand five times a person's height). Re-render at game scale, then add them here. See docs/SPRITES.md.
+ */
+export const ENABLED_SPRITES: readonly SpriteName[] = ["forge", "chimney"];
+
+/** Draw a sprite anchored on tile (x, y), or `fallback` while its sheet isn't loaded. */
+function spriteAt(p: Painter, name: SpriteName, x: number, y: number, fallback: (p: Painter) => void): void {
+  const [ax, ay] = iso(x, y);
+  drawSprite(p, getSheet(id, name), name, ax, ay, 1, fallback);
+}
+const nothing = () => {};
+
+// Where the sprites stand (tiles). The forge sprite's anchor is its bottom-centre: horizontally the
+// middle of the old 4×3 footprint at (1, 3), vertically its front corner (5, 6).
+const FORGE_AT: [number, number] = [4.75, 6.25];
+const ANVIL_AT: [number, number] = [4.1, 6.7];
+const CHIMNEY_AT: [number, number] = [5.2, 2.6];
+const BARREL_AT: [number, number] = [2.2, 7.2];
+const TOOLRACK_AT: [number, number] = [5.6, 5.2];
+/**
+ * The building's draw depth. A single number can't order a 4×3 footprint perfectly: anything behind
+ * it (north of y = 3 or west of x = 1, within its screen columns) has x + y < 8, anything in front
+ * (south of y = 6 or east of x = 5) has x + y > 7. 7.9 sits in that window just above the stand-alone
+ * chimney (7.8, behind), so the door yard (anvil, blacksmith, barrel) draws in front of the building.
+ * The old value, 12, painted the whole yard behind it.
+ */
+const FORGE_DEPTH = 7.9;
 
 interface Crack {
   px: [number, number][];
@@ -49,21 +85,29 @@ export function createScenery(): ZoneScenery {
   }
 
   const props: Prop[] = [];
-  // The forge: house, roof, chimney, glowing door, anvil.
+  // The forge: house, roof, chimney, glowing door (sprite: "forge").
   props.push({
-    depth: 12,
-    draw(p, f) {
-      const fg = box(p, iso, 1, 3, 4, 3, 24, "#4a3430", "#5b3e36", "#3c2a26");
-      box(p, iso, 1.2, 3.2, 3.6, 2.6, 30, "#3a2622", "#4a3029", "#301f1c");
-      box(p, iso, 4, 3.2, 0.8, 0.8, 44, "#2e211e", "#3d2b26", "#271c19");
-      const mx = (fg.D[0] + fg.C[0]) / 2;
-      const my = (fg.D[1] + fg.C[1]) / 2;
-      const flick = f.motion ? 0.75 + 0.25 * Math.sin(f.t * 9) * Math.sin(f.t * 3.1) : 1;
-      p.rect(Math.round(mx) - 3, Math.round(my) - 11, 5, 9, hex(255, 110 + 50 * flick, 43));
-      p.rect(Math.round(mx) - 2, Math.round(my) - 9, 3, 6, "#ffb347", 0.9);
-      box(p, iso, 3.75, 6.45, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38"); // anvil by the door
-    },
+    depth: FORGE_DEPTH,
+    draw: (p, f) =>
+      spriteAt(p, "forge", ...FORGE_AT, (p) => {
+        const fg = box(p, iso, 1, 3, 4, 3, 24, "#4a3430", "#5b3e36", "#3c2a26");
+        box(p, iso, 1.2, 3.2, 3.6, 2.6, 30, "#3a2622", "#4a3029", "#301f1c");
+        box(p, iso, 4, 3.2, 0.8, 0.8, 44, "#2e211e", "#3d2b26", "#271c19");
+        const mx = (fg.D[0] + fg.C[0]) / 2;
+        const my = (fg.D[1] + fg.C[1]) / 2;
+        const flick = f.motion ? 0.75 + 0.25 * Math.sin(f.t * 9) * Math.sin(f.t * 3.1) : 1;
+        p.rect(Math.round(mx) - 3, Math.round(my) - 11, 5, 9, hex(255, 110 + 50 * flick, 43));
+        p.rect(Math.round(mx) - 2, Math.round(my) - 9, 3, 6, "#ffb347", 0.9);
+      }),
   });
+  // The anvil by the door. The procedural box keeps its old spot; the sprite stands just in front.
+  props.push({
+    depth: ANVIL_AT[0] + ANVIL_AT[1],
+    draw: (p) => spriteAt(p, "anvil", ...ANVIL_AT, (p) => void box(p, iso, 3.75, 6.45, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38")),
+  });
+  // Sprite-only props: nothing was here before, so there's nothing to fall back to.
+  for (const [name, [x, y]] of [["chimney", CHIMNEY_AT], ["barrel", BARREL_AT], ["toolrack", TOOLRACK_AT]] as const)
+    props.push({ depth: x + y, draw: (p) => spriteAt(p, name, x, y, nothing) });
   // Rocks, kept clear of venue slots and the forge yard.
   for (let k = 0; k < 26; k++) {
     const x = 0.5 + R() * (N - 1.5);
@@ -76,7 +120,7 @@ export function createScenery(): ZoneScenery {
   }
   // Braziers.
   const BRAZIERS: [number, number][] = [[6.6, 8.2], [6.6, 12.8], [1.2, 13.4], [16.5, 4.2], [30.4, 18], [2.4, 29.4], [19.5, 30.4], [30.5, 30.3]];
-  for (const [x, y] of BRAZIERS) props.push({ depth: x + y, draw: (p, f) => brazier(p, x, y, f, 7) });
+  for (const [x, y] of BRAZIERS) props.push({ depth: x + y, draw: (p, f) => spriteAt(p, "brazier", x, y, (p) => brazier(p, x, y, f, 7)) });
 
   const smoke: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
 

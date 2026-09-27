@@ -6,6 +6,7 @@ import { Application, Container, Graphics, RenderTexture, Sprite, Text, TextStyl
 import { clampCamera, defaultCamera } from "./camera";
 import { PixiPainter } from "./painters";
 import type { PlacedPerson, Scene, SceneVenue } from "./scene";
+import { loadZoneSheets } from "./sprite-loader";
 import type { PersonSummary, Selection } from "./types";
 
 export const TIER_LABEL = { busker: "Busker", tavern: "Tavern", amph: "Amphitheater", fest: "Festival" } as const;
@@ -15,12 +16,15 @@ const HURRY = 3.2;
 
 /** A painter that fades everything drawn through it (locals easing in and out). */
 function faded(p: Painter, alpha: number): Painter {
-  return {
+  const out: Painter = {
     rect: (x, y, w, h, color, a = 1) => p.rect(x, y, w, h, color, a * alpha),
     poly: (pts, color, a = 1) => p.poly(pts, color, a * alpha),
     line: (x0, y0, x1, y1, width, color, a = 1) => p.line(x0, y0, x1, y1, width, color, a * alpha),
     glow: (pts, color, a) => p.glow(pts, color, a * alpha),
   };
+  // Forward sprites too, or faded props would silently fall back to their procedural art.
+  if (p.sprite) out.sprite = (sheet, frame, x, y, a = 1) => p.sprite!(sheet, frame, x, y, a * alpha);
+  return out;
 }
 
 interface Walker {
@@ -102,6 +106,8 @@ export class WorldRenderer {
     this.zone = zone;
     this.opts = opts;
     this.iso = makeIso(zone.layout.origin);
+    // Sprite sheets land asynchronously; frames drawn before then (or if they fail) stay procedural.
+    void loadZoneSheets(zone.id, zone.sprites);
 
     const css = getComputedStyle(document.documentElement);
     this.fonts = {

@@ -27,4 +27,9 @@ describe("zone URLs share the top-level namespace with pages", () => {
   it("every page folder in app/ is listed as reserved (so new pages get noticed here)", () => {
     for (const seg of pageSegments) expect(RESERVED_PATHS as readonly string[], `add "${seg}" to RESERVED_PATHS`).toContain(seg);
   });
+
+  it("every top-level entry in public/ is listed as reserved", () => {
+    const pub = join(__dirname, "..", "..", "public");
+    for (const seg of readdirSync(pub)) expect(RESERVED_PATHS as readonly string[], `add "${seg}" to RESERVED_PATHS`).toContain(seg);
+  });
 });

@@ -1,4 +1,5 @@
-import type { Color, Painter } from "@earshot/core";
+import type { Color, Painter, SpriteSheet } from "@earshot/core";
+import type { LoadedSheet } from "./sprite-loader";
 
 /** Painter over a 2D canvas, for small previews (the avatar picker). */
 export function canvasPainter(g: CanvasRenderingContext2D): Painter {
@@ -40,6 +41,14 @@ export function canvasPainter(g: CanvasRenderingContext2D): Painter {
       path(pts);
       g.fill();
       g.restore();
+    },
+    sprite(sheet: SpriteSheet, frame: string, x: number, y: number, alpha = 1) {
+      const f = sheet.manifest.frames[frame];
+      const img = (sheet as Partial<LoadedSheet>).image;
+      if (!f || !img) return;
+      g.globalAlpha = alpha;
+      g.drawImage(img, f.x, f.y, f.w, f.h, Math.round(x - f.ax), Math.round(y - f.ay), f.w, f.h);
+      g.globalAlpha = 1;
     },
   };
 }

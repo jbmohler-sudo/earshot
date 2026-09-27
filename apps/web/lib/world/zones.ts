@@ -28,6 +28,8 @@ export const RESERVED_PATHS = [
   "about", "admin", "app", "help", "invite", "legal", "logout", "map", "privacy", "settings", "signup", "static", "terms", "u", "user", "users", "zone", "zones",
   // framework and well-known
   "_next", "favicon.ico", "robots.txt", "sitemap.xml", ".well-known",
+  // folders in public/
+  "sprites",
 ] as const;
 
 /** URL for a zone. The genre id is the URL; place names like "The Forge" are display only. */

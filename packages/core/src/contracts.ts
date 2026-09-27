@@ -151,4 +151,9 @@ export interface ZonePlugin {
   theme: ZoneTheme;
   /** Ambient locals, most characteristic first (the first few are the ones kept as crowds grow). */
   locals?: ZoneLocal[];
+  /**
+   * Sprite sheets this zone draws (looked up with getSheet(id, name)). The app loads each from
+   * /sprites/<id>/<name>.png + .json and registers it; until then the zone draws procedurally.
+   */
+  sprites?: readonly string[];
 }

@@ -7,6 +7,7 @@ export * from "./person.ts";
 export * from "./rate-gate.ts";
 export * from "./rng.ts";
 export * from "./schedule.ts";
+export * from "./sprites.ts";
 export * from "./tiers.ts";
 export * from "./world.ts";
 export * from "./zones.ts";
