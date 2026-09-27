@@ -55,8 +55,7 @@ All six sheets were rendered through the Blender pixel pipeline
 (`C:\Umbrella\_assets\_pipeline\`: orthographic camera at 26.565° elevation and 45° azimuth, 10.6 px
 per metre, 8× supersample, box downscale, hard alpha, ≤12 colours), with anchors set to the projected
 ground point. Props are true scale: `brazier` (9×13), `anvil` (8×11), `barrel` (8×12), `toolrack` (12×15).
-`forge` (56×48) is the Mixar model scaled 2.2× to fill its 4×3-tile footprint, anchored on the
-footprint centre (`FORGE_AT` = 3, 4.5). `chimney` (16×60, a purpose-built 1.2 m × 5.6 m stack) is **retired**:
+`forge` (56×56, yawed 90°) is the Mixar model scaled 2.2×, long wall down the map's left edge, door facing the yard. Anchored on the footprint centre (`FORGE_AT` = 20, 28), along the bottom edge. It used to sit in the back-left corner (`FORGE_AT` = 3, 4.5, 56×48) and read as crowning the yard. The left wall is a venue row, so it doesn't go there either. `chimney` (16×60, a purpose-built 1.2 m × 5.6 m stack) is **retired**:
 its PNG and manifest stay in `public/sprites/metal/`, but it's not in `SPRITES`, so the zone neither loads nor
 draws it (a test guards this). The building keeps its own roof chimney and smoke. Five sheets are enabled.
 

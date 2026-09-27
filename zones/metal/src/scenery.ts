@@ -24,20 +24,19 @@ function spriteAt(p: Painter, name: SpriteName, x: number, y: number, fallback: 
 }
 const nothing = () => {};
 
-// Where the sprites stand (tiles). Every sprite's anchor is its projected ground point (docs/SPRITES.md):
-// the forge's is the centre of its 4×3 footprint at (1, 3).
-const FORGE_AT: [number, number] = [3, 4.5];
-const ANVIL_AT: [number, number] = [4.1, 6.7];
-const BARREL_AT: [number, number] = [2.2, 7.2];
-const TOOLRACK_AT: [number, number] = [5.6, 5.2];
+// Where the sprites stand (tiles). Every sprite's anchor is its projected ground point (docs/SPRITES.md).
+// The building is yawed 90°: long wall along the map's bottom edge (y = 29.5), door facing
+// up into the yard (−y), not out past the edge. Centre of the 4×3 footprint. The left wall is a
+// row of venue slots, so the building does not go there. Clear of slot 4 (13, 26) and slot 5 (27, 26).
+const FORGE_AT: [number, number] = [20, 28];
+const ANVIL_AT: [number, number] = [19.2, 25.6];
+const BARREL_AT: [number, number] = [21.2, 25.4];
+const TOOLRACK_AT: [number, number] = [18.4, 26.4];
 /**
- * The building's draw depth. A single number can't order a 4×3 footprint perfectly: anything behind
- * it (north of y = 3 or west of x = 1, within its screen columns) has x + y < 8, anything in front
- * (south of y = 6 or east of x = 5) has x + y > 7. 7.9 sits in that window, so the door yard (anvil,
- * blacksmith, barrel) draws in front of the building.
- * The old value, 12, painted the whole yard behind it.
+ * Draw depth for a footprint whose front (door) edge is at y = 26.5. The yard in front of the
+ * door sits near y = 25.5, so its depth is about 45. A depth of 44 paints the wall first and the yard over it.
  */
-const FORGE_DEPTH = 7.9;
+const FORGE_DEPTH = 44;
 
 interface Crack {
   px: [number, number][];
@@ -111,7 +110,7 @@ export function createScenery(): ZoneScenery {
     const x = 0.5 + R() * (N - 1.5);
     const y = 3 + R() * (N - 4);
     if (nearSlot(x, y, 6.2)) continue;
-    if (x < 7 && y < 13.5) continue;
+    if (x > 16 && x < 24 && y > 24) continue;
     const w = 0.4 + R() * 0.6;
     const h = 3 + Math.floor(R() * 6);
     props.push({ depth: x + y, draw: (p) => void box(p, iso, x, y, w, w * 0.8, h, "#3b302d", "#2f2523", "#251d1b") });
