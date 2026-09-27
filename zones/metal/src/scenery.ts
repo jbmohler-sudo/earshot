@@ -29,14 +29,15 @@ const nothing = () => {};
 // up into the yard (−y), not out past the edge. Centre of the 4×3 footprint. The left wall is a
 // row of venue slots, so the building does not go there. Clear of slot 4 (13, 26) and slot 5 (27, 26).
 const FORGE_AT: [number, number] = [20, 28];
-const ANVIL_AT: [number, number] = [19.2, 25.6];
-const BARREL_AT: [number, number] = [21.2, 25.4];
-const TOOLRACK_AT: [number, number] = [18.4, 26.4];
+const ANVIL_AT: [number, number] = [23.0, 29.2];
+const BARREL_AT: [number, number] = [24.0, 28.6];
+const TOOLRACK_AT: [number, number] = [22.6, 28.6];
 /**
- * Draw depth for a footprint whose front (door) edge is at y = 26.5. The yard in front of the
- * door sits near y = 25.5, so its depth is about 45. A depth of 44 paints the wall first and the yard over it.
+ * Draw depth for a footprint whose front (door) edge is at y = 26.5. The yard props stand on the
+ * building's right flank (x ≈ 23), so their depth is about 52. A depth of 50 paints the wall first
+ * and the yard over it.
  */
-const FORGE_DEPTH = 44;
+const FORGE_DEPTH = 50;
 
 interface Crack {
   px: [number, number][];
@@ -154,8 +155,10 @@ export function createScenery(): ZoneScenery {
     props,
     overlay(p, f) {
       if (f.motion && Math.random() < 0.25) {
-        const [cx, cy] = iso(4.4, 3.6);
-        smoke.push({ x: cx, y: cy - 46, vx: 3 + Math.random() * 3, vy: -8 - Math.random() * 5, life: 1 });
+        // The chimney stack is baked into the sprite, right of the anchor (forge.png: top at
+        // px (29, 0), anchor (28, 46)). Spawn there so the smoke follows the building.
+        const [cx, cy] = iso(...FORGE_AT);
+        smoke.push({ x: cx + 1, y: cy - 46, vx: 3 + Math.random() * 3, vy: -8 - Math.random() * 5, life: 1 });
       }
       for (const s of smoke) {
         s.x += s.vx * f.dt;

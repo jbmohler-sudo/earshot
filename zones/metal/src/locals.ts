@@ -25,12 +25,12 @@ function walker(p: Painter, where: TilePoint, l: Look, f: Frame): void {
 }
 
 export function createLocals(): ZoneLocal[] {
-  const smithAt = at(19.6, 25.2);
+  const smithAt = at(23.4, 29.0);
   const tenderLoop: TilePoint[] = [at(6.0, 8.8), at(6.0, 11.9), at(4.2, 13.2), at(6.0, 11.9)];
   const tenderPos = (f: Frame) => (f.motion ? loopAt(tenderLoop, 0.55, f.t) : tenderLoop[0]!);
   const apprenticeLoop: TilePoint[] = [at(2.4, 9.3), at(4.6, 9.6), at(4.3, 11.6), at(2.6, 11.2)];
   const apprenticePos = (f: Frame) => (f.motion ? loopAt(apprenticeLoop, 0.4, f.t + 3) : apprenticeLoop[0]!);
-  const haulerLoop: TilePoint[] = [at(17.6, 24.8), at(17.2, 23.4)];
+  const haulerLoop: TilePoint[] = [at(15.8, 24.6), at(15.2, 23.8)];
   const haulerPos = (f: Frame) => (f.motion ? loopAt(haulerLoop, 0.45, f.t) : haulerLoop[0]!);
   const pacerLoop: TilePoint[] = [at(18.6, 16.4), at(19.9, 15.9), at(19.4, 17.2)];
   const pacerPos = (f: Frame) => (f.motion ? loopAt(pacerLoop, 0.35, f.t + 1) : pacerLoop[0]!);
@@ -50,7 +50,7 @@ export function createLocals(): ZoneLocal[] {
         if (up) p.rect(x - 5, y - 14, 3, 2, "#8a7e78");
         else p.rect(x - 7, y - 8, 3, 2, "#8a7e78");
         if (f.motion && swing < 0 && swing > -0.6) {
-          const [ax, ay] = feet(at(19.2, 25.55));
+          const [ax, ay] = feet(at(23.0, 29.2));
           const k0 = Math.floor(f.t * 24);
           for (let k = 0; k < 5; k++) p.rect(ax - 3 + ((k0 + k * 7) % 7), ay - 7 - ((k0 + k * 3) % 5), 1, 1, k % 2 ? "#ffe1a0" : "#ff6a2b");
         }

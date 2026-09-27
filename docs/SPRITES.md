@@ -33,8 +33,8 @@ ground point, or painter's-algorithm sorting goes wrong.
   because `texture()` inherits the alpha of the last `fill()`. `canvasPainter.sprite` uses `drawImage`.
   The renderer's `faded()` wrapper forwards `sprite` with its alpha multiplied.
 
-To switch a wired sprite on or off, edit the zone's enabled list (`ENABLED_SPRITES` in
-`zones/metal/src/scenery.ts`). Tests in `zones/metal/sprites.test.ts` check manifests against the PNGs,
+To switch a wired sprite on or off, edit the zone's enabled list (`ENABLED_SPRITES` in its
+`scenery.ts`). Tests in `zones/<zone>/sprites.test.ts` check manifests against the PNGs,
 on-canvas placement, the no-sheet fallback and draw order.
 
 ## Art requirements
@@ -74,3 +74,22 @@ Glows stay procedural and are positioned from pixel offsets in `scenery.ts`: `LA
 (1, 2) minus anchor) and `WAREHOUSE_DOOR` (roll-up door bottom-centre, warehouse.png (17, 48) minus
 anchor). Re-rendered art must update those offsets. The freight train, puddles and rails stay procedural.
 Tests: `zones/indie/sprites.test.ts`.
+
+### The Hollow set status (2026-09-27)
+
+`zones/folk` draws six sheets from `public/sprites/folk/`: `cabin` (60×54, anchored on its 4×3 footprint
+centre, `CABIN_AT` = 3, 4.5, draw depth 7.9 so the door yard sorts in front), `pine_dark` and `pine_light`
+(10×27, seeded scatter), `lantern` (6×14, placed 8×), `campfire` (12×11, the zone's drink station) and
+`haybale` (14×12, placed 3×). Glows stay procedural: `LANTERN_HEAD` (lantern.png (1, 4) minus anchor) and
+`CAMPFIRE_FLAME` (campfire.png (5, 0) minus anchor). Creek water, wildflowers, fireflies and sparks stay
+procedural. Tests: `zones/folk/sprites.test.ts`.
+
+### The Outskirts set status (2026-09-27)
+
+`zones/outskirts` draws eight sheets from `public/sprites/outskirts/`: `motel` (56×40, anchored on its
+4.4×2.6 footprint centre, `MOTEL_AT` = 3.2, 4.3, draw depth 11 so the door yard sorts in front),
+`neon_sign` (15×38, its own prop at `SIGN_AT` = 5.9, 4.1), `water_tower` (18×39), `cactus_a` and `cactus_b`
+(8×16, seeded scatter), `pickup` (24×17), `floodlight` (6×24, placed 7×) and `bar_counter` (14×16, the
+zone's drink station). The painter can't tint a sprite, so the sign blinks by swapping the glowing sheet
+for its dark procedural bars rather than recolouring pixels. `FLOOD_HEAD` (floodlight.png (3, 2) minus
+anchor) keeps the light cone procedural. Highway cars stay procedural. Tests: `zones/outskirts/sprites.test.ts`.
