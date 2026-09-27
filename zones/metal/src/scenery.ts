@@ -24,11 +24,11 @@ function spriteAt(p: Painter, name: SpriteName, x: number, y: number, fallback: 
 }
 const nothing = () => {};
 
-// Where the sprites stand (tiles). The forge sprite's anchor is its bottom-centre: horizontally the
-// middle of the old 4×3 footprint at (1, 3), vertically its front corner (5, 6).
-const FORGE_AT: [number, number] = [4.75, 6.25];
+// Where the sprites stand (tiles). Every sprite's anchor is its projected ground point (docs/SPRITES.md):
+// the forge's is the centre of its 4×3 footprint at (1, 3).
+const FORGE_AT: [number, number] = [3, 4.5];
 const ANVIL_AT: [number, number] = [4.1, 6.7];
-const CHIMNEY_AT: [number, number] = [5.2, 2.6];
+const CHIMNEY_AT: [number, number] = [5.4, 2.4];
 const BARREL_AT: [number, number] = [2.2, 7.2];
 const TOOLRACK_AT: [number, number] = [5.6, 5.2];
 /**

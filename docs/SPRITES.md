@@ -51,9 +51,9 @@ person is about 12 px tall, and the procedural Forge building is 56 px wide and 
 
 ### Forge set status (2026-09-27)
 
-All six sheets are enabled. `brazier` (9×13), `anvil` (8×11), `barrel` (8×12) and `toolrack` (12×15) were
-re-rendered at game scale through the Blender pixel pipeline (`C:\Umbrella\_assets\_pipeline\`:
-orthographic camera at 26.565° elevation and 45° azimuth, 10.6 px per metre, 8× supersample, box
-downscale, hard alpha, ≤12 colours), with anchors set to the projected ground point. `forge` (53×64) and
-`chimney` (30×64) are still the original front-on renders (flat bottom edges). They read acceptably, but
-a 45° re-render would sit better on the tiles.
+All six sheets are enabled and all were rendered through the Blender pixel pipeline
+(`C:\Umbrella\_assets\_pipeline\`: orthographic camera at 26.565° elevation and 45° azimuth, 10.6 px
+per metre, 8× supersample, box downscale, hard alpha, ≤12 colours), with anchors set to the projected
+ground point. Props are true scale: `brazier` (9×13), `anvil` (8×11), `barrel` (8×12), `toolrack` (12×15).
+`forge` (56×48) is the Mixar model scaled 2.2× to fill its 4×3-tile footprint, anchored on the
+footprint centre (`FORGE_AT` = 3, 4.5). `chimney` (16×60) is a purpose-built 1.2 m × 5.6 m stack.

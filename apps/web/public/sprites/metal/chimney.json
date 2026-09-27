@@ -1,13 +1,1 @@
-{
-  "frames": {
-    "chimney": {
-      "x": 0,
-      "y": 0,
-      "w": 30,
-      "h": 64,
-      "ax": 15,
-      "ay": 64
-    }
-  },
-  "animations": {}
-}
+{"frames":{"chimney":{"x":0,"y":0,"w":16,"h":60,"ax":8,"ay":57}},"animations":{}}
