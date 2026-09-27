@@ -1,13 +1,1 @@
-{
-  "frames": {
-    "anvil": {
-      "x": 0,
-      "y": 0,
-      "w": 68,
-      "h": 64,
-      "ax": 34,
-      "ay": 64
-    }
-  },
-  "animations": {}
-}
+{"frames":{"anvil":{"x":0,"y":0,"w":8,"h":11,"ax":4,"ay":10}},"animations":{}}

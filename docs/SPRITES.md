@@ -49,11 +49,11 @@ person is about 12 px tall, and the procedural Forge building is 56 px wide and 
 - **Anchor:** the bottom-centre of a tight crop is only the ground point for footprints that are
   symmetric on screen. Otherwise set `ax`/`ay` to the real front ground corner.
 
-### Known issues with the first Forge set (2026-09-26)
+### Forge set status (2026-09-27)
 
-All six sheets were normalized to 64 px tall. `forge` (53×64) and `chimney` (30×64) are plausible at
-game scale and are enabled. `brazier` (48×64, about 5× a person), `anvil` (68×64, wider than the building),
-`barrel` (41×64) and `toolrack` (41×64) are wired but disabled until they're re-rendered at game scale
-(roughly 12–16 px tall for the brazier, barrel and anvil). `forge` and `chimney` have flat bottom edges
-(rendered front-on, not at 45°). They read acceptably in-game, but a 45° re-render would sit better on
-the tiles.
+All six sheets are enabled. `brazier` (9×13), `anvil` (8×11), `barrel` (8×12) and `toolrack` (12×15) were
+re-rendered at game scale through the Blender pixel pipeline (`C:\Umbrella\_assets\_pipeline\`:
+orthographic camera at 26.565° elevation and 45° azimuth, 10.6 px per metre, 8× supersample, box
+downscale, hard alpha, ≤12 colours), with anchors set to the projected ground point. `forge` (53×64) and
+`chimney` (30×64) are still the original front-on renders (flat bottom edges). They read acceptably, but
+a 45° re-render would sit better on the tiles.

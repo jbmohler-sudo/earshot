@@ -1,13 +1,1 @@
-{
-  "frames": {
-    "toolrack": {
-      "x": 0,
-      "y": 0,
-      "w": 41,
-      "h": 64,
-      "ax": 20,
-      "ay": 64
-    }
-  },
-  "animations": {}
-}
+{"frames":{"toolrack":{"x":0,"y":0,"w":12,"h":15,"ax":7,"ay":13}},"animations":{}}

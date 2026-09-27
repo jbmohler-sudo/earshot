@@ -12,11 +12,10 @@ export const iso = makeIso(layout.origin);
 export const SPRITES = ["forge", "brazier", "anvil", "chimney", "barrel", "toolrack"] as const;
 type SpriteName = (typeof SPRITES)[number];
 /**
- * The sheets the zone actually asks the app to load; the rest keep drawing procedurally. brazier, anvil,
- * barrel and toolrack are wired but held back: their renders were normalized to 64 px tall (a brazier
- * would stand five times a person's height). Re-render at game scale, then add them here. See docs/SPRITES.md.
+ * The sheets the zone actually asks the app to load; anything left out keeps drawing procedurally.
+ * All six are on since the 2026-09-27 game-scale re-render of brazier, anvil, barrel and toolrack.
  */
-export const ENABLED_SPRITES: readonly SpriteName[] = ["forge", "chimney"];
+export const ENABLED_SPRITES: readonly SpriteName[] = SPRITES;
 
 /** Draw a sprite anchored on tile (x, y), or `fallback` while its sheet isn't loaded. */
 function spriteAt(p: Painter, name: SpriteName, x: number, y: number, fallback: (p: Painter) => void): void {

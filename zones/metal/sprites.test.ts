@@ -44,7 +44,10 @@ describe("Forge sprites", () => {
     expect([f.x, f.y]).toEqual([0, 0]);
     expect(f.ax).toBeGreaterThanOrEqual(0);
     expect(f.ax).toBeLessThanOrEqual(f.w);
-    expect(f.ay).toBe(f.h); // anchored on the ground line
+    // Anchor = the projected ground-contact point (docs/SPRITES.md). That's the bottom edge for
+    // front-on art, a few px above it for dimetric renders whose footprint extends below its centre.
+    expect(f.ay).toBeLessThanOrEqual(f.h);
+    expect(f.ay).toBeGreaterThanOrEqual(Math.ceil(f.h * 0.6));
   });
 
   it("asks the app to load only wired sheets", () => {

@@ -1,13 +1,1 @@
-{
-  "frames": {
-    "barrel": {
-      "x": 0,
-      "y": 0,
-      "w": 41,
-      "h": 64,
-      "ax": 20,
-      "ay": 64
-    }
-  },
-  "animations": {}
-}
+{"frames":{"barrel":{"x":0,"y":0,"w":8,"h":12,"ax":4,"ay":10}},"animations":{}}
