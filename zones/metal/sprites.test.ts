@@ -1,6 +1,6 @@
 // The Forge's sprite wiring: shipped sheets match their manifests, every wired prop blits on-canvas
 // once its sheet is registered, nothing blits (and nothing magenta shows) without sheets, and the
-// building sorts between the chimney behind it and the door yard in front of it.
+// building sorts behind the door yard in front of it. The retired stand-alone chimney never draws.
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearSheets, type Frame, type Painter, registerSheet, type SpriteManifest } from "../../packages/core/src/index.ts";
@@ -60,10 +60,9 @@ describe("Forge sprites", () => {
     const { p, blits, magenta } = recorder();
     drawAll(p, { t: 3, dt: 0.1, motion });
     const count = (n: string) => blits.filter((b) => b.frame === n).length;
-    expect({ forge: count("forge"), anvil: count("anvil"), chimney: count("chimney"), barrel: count("barrel"), toolrack: count("toolrack"), brazier: count("brazier") }).toEqual({
+    expect({ forge: count("forge"), anvil: count("anvil"), barrel: count("barrel"), toolrack: count("toolrack"), brazier: count("brazier") }).toEqual({
       forge: 1,
       anvil: 1,
-      chimney: 1,
       barrel: 1,
       toolrack: 1,
       brazier: 8,
@@ -88,12 +87,21 @@ describe("Forge sprites", () => {
     expect(magenta).toEqual([]);
   });
 
-  it("sorts the building after the chimney behind it and before the door yard in front", () => {
+  it("sorts the building before the door yard in front of it", () => {
     for (const n of SPRITES) registerSheet("metal", n, { manifest: manifest(n) });
     const { p, blits } = recorder();
     drawAll(p, { t: 0, dt: 0, motion: false });
     const order = blits.map((b) => b.frame).filter((n) => n !== "brazier");
-    expect(order.indexOf("chimney")).toBeLessThan(order.indexOf("forge"));
     for (const n of ["anvil", "barrel", "toolrack"]) expect(order.indexOf("forge"), n).toBeLessThan(order.indexOf(n));
+  });
+
+  it("never draws the retired stand-alone chimney, even with its sheet loaded", () => {
+    expect(SPRITES).not.toContain("chimney");
+    for (const n of [...SPRITES, "chimney"]) registerSheet("metal", n, { manifest: manifest(n) });
+    for (const motion of [true, false]) {
+      const { p, blits } = recorder();
+      drawAll(p, { t: 3, dt: 0.1, motion });
+      expect(blits.filter((b) => b.frame === "chimney")).toEqual([]);
+    }
   });
 });

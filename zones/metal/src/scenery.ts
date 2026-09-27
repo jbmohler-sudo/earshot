@@ -9,7 +9,7 @@ import { layout, N, nearSlot, riverTiles } from "./layout.ts";
 export const iso = makeIso(layout.origin);
 
 /** Sprite sheets the Forge is wired to draw (the app loads /sprites/metal/<name>.png + .json). */
-export const SPRITES = ["forge", "brazier", "anvil", "chimney", "barrel", "toolrack"] as const;
+export const SPRITES = ["forge", "brazier", "anvil", "barrel", "toolrack"] as const;
 type SpriteName = (typeof SPRITES)[number];
 /**
  * The sheets the zone actually asks the app to load; anything left out keeps drawing procedurally.
@@ -28,14 +28,13 @@ const nothing = () => {};
 // the forge's is the centre of its 4×3 footprint at (1, 3).
 const FORGE_AT: [number, number] = [3, 4.5];
 const ANVIL_AT: [number, number] = [4.1, 6.7];
-const CHIMNEY_AT: [number, number] = [5.4, 2.4];
 const BARREL_AT: [number, number] = [2.2, 7.2];
 const TOOLRACK_AT: [number, number] = [5.6, 5.2];
 /**
  * The building's draw depth. A single number can't order a 4×3 footprint perfectly: anything behind
  * it (north of y = 3 or west of x = 1, within its screen columns) has x + y < 8, anything in front
- * (south of y = 6 or east of x = 5) has x + y > 7. 7.9 sits in that window just above the stand-alone
- * chimney (7.8, behind), so the door yard (anvil, blacksmith, barrel) draws in front of the building.
+ * (south of y = 6 or east of x = 5) has x + y > 7. 7.9 sits in that window, so the door yard (anvil,
+ * blacksmith, barrel) draws in front of the building.
  * The old value, 12, painted the whole yard behind it.
  */
 const FORGE_DEPTH = 7.9;
@@ -105,7 +104,7 @@ export function createScenery(): ZoneScenery {
     draw: (p) => spriteAt(p, "anvil", ...ANVIL_AT, (p) => void box(p, iso, 3.75, 6.45, 0.7, 0.4, 5, "#6f625c", "#574b46", "#463c38")),
   });
   // Sprite-only props: nothing was here before, so there's nothing to fall back to.
-  for (const [name, [x, y]] of [["chimney", CHIMNEY_AT], ["barrel", BARREL_AT], ["toolrack", TOOLRACK_AT]] as const)
+  for (const [name, [x, y]] of [["barrel", BARREL_AT], ["toolrack", TOOLRACK_AT]] as const)
     props.push({ depth: x + y, draw: (p) => spriteAt(p, name, x, y, nothing) });
   // Rocks, kept clear of venue slots and the forge yard.
   for (let k = 0; k < 26; k++) {

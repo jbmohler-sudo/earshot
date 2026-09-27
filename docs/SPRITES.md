@@ -56,4 +56,6 @@ All six sheets are enabled and all were rendered through the Blender pixel pipel
 per metre, 8× supersample, box downscale, hard alpha, ≤12 colours), with anchors set to the projected
 ground point. Props are true scale: `brazier` (9×13), `anvil` (8×11), `barrel` (8×12), `toolrack` (12×15).
 `forge` (56×48) is the Mixar model scaled 2.2× to fill its 4×3-tile footprint, anchored on the
-footprint centre (`FORGE_AT` = 3, 4.5). `chimney` (16×60) is a purpose-built 1.2 m × 5.6 m stack.
+footprint centre (`FORGE_AT` = 3, 4.5). `chimney` (16×60, a purpose-built 1.2 m × 5.6 m stack) is **retired**:
+its PNG and manifest stay in `public/sprites/metal/`, but it's not in `SPRITES`, so the zone neither loads nor
+draws it (a test guards this). The building keeps its own roof chimney and smoke.

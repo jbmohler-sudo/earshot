@@ -20,7 +20,7 @@
   - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
   - **Zone travel:** your own avatar changing zones while you follow it plays walk-off → world-map hop → title card → walk-in (~2.5 s). Otherwise you get a toast with a Follow button. Reduced motion gets a crossfade and the title card. The world map is a reusable component for Phase 2.
   - **Ambient locals:** 6 per zone at listener brightness, placed where the eye goes (forge door, plaza, near venues), and several of them walk loops. A test proves all 6 are in the default desktop camera view (at least 4 on a phone). They thin out as real people arrive and are never counted.
-  - **Forge sprites (branch `feat/forge-sprites`, not merged or live):** zones can draw pre-rendered sprites through `Painter.sprite` with a procedural fallback. The Forge uses the building and chimney sprites. Brazier, anvil, barrel and toolrack are wired but disabled until they're re-rendered at game scale. See [docs/SPRITES.md](docs/SPRITES.md).
+  - **Forge sprites (live on `main`):** zones can draw pre-rendered sprites through `Painter.sprite` with a procedural fallback. The Forge draws five dimetric sprites: building, brazier, anvil, barrel, toolrack. The stand-alone chimney was removed from the zone on 2026-09-27; its art files are kept but not loaded. See [docs/SPRITES.md](docs/SPRITES.md).
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
