@@ -1,19 +1,59 @@
-// The Lot: concrete, rail tracks, a brick warehouse, street lamps, neon puddles. Placeholder art.
-import { box, diamond, type Frame, hex, makeIso, mulberry32, type Painter, type Prop, type ZoneScenery } from "@earshot/core";
+// The Lot: concrete, rail tracks, a brick warehouse, street lamps, neon puddles. Five props have
+// pre-rendered sprites (/sprites/indie/*, see docs/SPRITES.md); each falls back to its procedural drawing
+// while its sheet isn't loaded, so the zone looks exactly as before without them. The seeded RNG is
+// consumed in the same order either way. The freight train, puddles, rails and every glow stay procedural.
+import { box, diamond, drawSprite, type Frame, getSheet, hex, makeIso, mulberry32, type Painter, type Prop, type ZoneScenery } from "@earshot/core";
+import { id } from "./claims.ts";
 import { layout, N, nearSlot } from "./layout.ts";
 
 export const iso = makeIso(layout.origin);
 
-/** Street lamp: pole plus a warm head that hums. */
+/** Sprite sheets the Lot is wired to draw (the app loads /sprites/indie/<name>.png + .json). */
+export const SPRITES = ["warehouse", "lamp", "dumpster", "crate", "van"] as const;
+type SpriteName = (typeof SPRITES)[number];
+/** The sheets the zone asks the app to load; anything left out keeps drawing procedurally. */
+export const ENABLED_SPRITES: readonly SpriteName[] = SPRITES;
+
+/**
+ * Draw a sprite anchored on tile (x, y) (its footprint centre), or `fallback` while its sheet isn't
+ * loaded. Returns the anchor's screen point when the sprite was drawn, so callers can place procedural
+ * glows on it; null when the fallback ran.
+ */
+function spriteAt(p: Painter, name: SpriteName, x: number, y: number, fallback: (p: Painter) => void): [number, number] | null {
+  const [ax, ay] = iso(x, y);
+  const sheet = getSheet(id, name);
+  const drew = !!(sheet && sheet.manifest.frames[name] && p.sprite);
+  drawSprite(p, sheet, name, ax, ay, 1, fallback);
+  return drew ? [Math.round(ax), Math.round(ay)] : null;
+}
+
+// Pixel offsets from each sprite's anchor to a feature on it (from the render's metadata:
+// feature px minus the manifest's ax/ay). Keep in step with the art in public/sprites/indie/.
+/** lamp.png: 7×20, anchor (4, 19), lit head at (1, 2). */
+const LAMP_HEAD: [number, number] = [1 - 4, 2 - 19];
+/** warehouse.png: 58×55, anchor (29, 43), roll-up door bottom-centre at (17, 48). */
+const WAREHOUSE_DOOR: [number, number] = [17 - 29, 48 - 43];
+/** The warehouse's 4.2 × 3 footprint at (1, 3); the sprite anchors on its centre. */
+const WAREHOUSE_AT: [number, number] = [1 + 4.2 / 2, 3 + 3 / 2];
+
+/** Street lamp: pole plus a warm head that hums. The glow is always procedural. */
 export function lamp(p: Painter, x: number, y: number, f: Frame, h = 16): void {
-  box(p, iso, x - 0.1, y - 0.1, 0.2, 0.2, h, "#1b1a20", "#3a3842", "#2a2830");
-  const [cx, cy] = iso(x, y);
-  const hx = Math.round(cx);
-  const hy = Math.round(cy) - h - 2;
   const hum = f.motion ? 0.85 + 0.15 * Math.sin(f.t * 7 + x) : 1;
-  p.rect(hx - 2, hy, 5, 2, "#2a2830");
-  p.rect(hx - 1, hy + 2, 3, 1, hex(255, 214 * hum, 140 * hum));
-  p.glow([hx, hy - 4, hx + 6, hy + 1, hx, hy + 6, hx - 6, hy + 1], "#ffd68c", 0.18 * hum);
+  const at = spriteAt(p, "lamp", x, y, (p) => {
+    box(p, iso, x - 0.1, y - 0.1, 0.2, 0.2, h, "#1b1a20", "#3a3842", "#2a2830");
+    const [cx, cy] = iso(x, y);
+    const hx = Math.round(cx);
+    const hy = Math.round(cy) - h - 2;
+    p.rect(hx - 2, hy, 5, 2, "#2a2830");
+    p.rect(hx - 1, hy + 2, 3, 1, hex(255, 214 * hum, 140 * hum));
+    p.glow([hx, hy - 4, hx + 6, hy + 1, hx, hy + 6, hx - 6, hy + 1], "#ffd68c", 0.18 * hum);
+  });
+  if (at) {
+    // Same halo as the procedural lamp, centred just under the sprite's lit head.
+    const hx = at[0] + LAMP_HEAD[0];
+    const hy = at[1] + LAMP_HEAD[1] + 1;
+    p.glow([hx, hy - 5, hx + 6, hy, hx, hy + 5, hx - 6, hy], "#ffd68c", 0.18 * hum);
+  }
 }
 
 export function createScenery(): ZoneScenery {
@@ -39,23 +79,33 @@ export function createScenery(): ZoneScenery {
   props.push({
     depth: 11,
     draw(p, f) {
-      const w = box(p, iso, 1, 3, 4.2, 3, 26, "#4a2c28", "#6a3a34", "#52302b");
-      box(p, iso, 1.6, 3.4, 0.7, 0.7, 32, "#3a3842", "#4a4852", "#2e2c34");
-      box(p, iso, 3.4, 3.6, 0.7, 0.7, 31, "#3a3842", "#4a4852", "#2e2c34");
-      const mx = (w.D[0] + w.C[0]) / 2;
-      const my = (w.D[1] + w.C[1]) / 2;
       const flick = f.motion ? 0.8 + 0.2 * Math.sin(f.t * 2.3) : 1;
-      p.rect(Math.round(mx) - 5, Math.round(my) - 12, 10, 10, hex(255 * flick, 95 * flick, 162 * flick), 0.9);
-      for (let k = 0; k < 4; k++) p.rect(Math.round(mx) - 5, Math.round(my) - 12 + k * 3, 10, 1, "#1a1920", 0.5);
-      // windows along the right face
-      for (let k = 0; k < 3; k++) {
-        const u = (k + 0.7) / 3.4;
-        const wx = w.B[0] + (w.C[0] - w.B[0]) * u;
-        const wy = w.B[1] + (w.C[1] - w.B[1]) * u;
-        p.rect(Math.round(wx) - 1, Math.round(wy) - 18, 3, 4, (k + Math.floor(f.t / 3)) % 3 ? "#ffd68c" : "#2a2830");
+      const at = spriteAt(p, "warehouse", ...WAREHOUSE_AT, (p) => procWarehouse(p, f));
+      if (at) {
+        // Neon spilling out of the roll-up door onto the concrete (the door itself is in the sprite).
+        const dx = at[0] + WAREHOUSE_DOOR[0];
+        const dy = at[1] + WAREHOUSE_DOOR[1];
+        p.glow([dx, dy - 3, dx + 9, dy + 1, dx, dy + 5, dx - 9, dy + 1], "#ff5fa2", 0.22 * flick);
       }
     },
   });
+  function procWarehouse(p: Painter, f: Frame): void {
+    const w = box(p, iso, 1, 3, 4.2, 3, 26, "#4a2c28", "#6a3a34", "#52302b");
+    box(p, iso, 1.6, 3.4, 0.7, 0.7, 32, "#3a3842", "#4a4852", "#2e2c34");
+    box(p, iso, 3.4, 3.6, 0.7, 0.7, 31, "#3a3842", "#4a4852", "#2e2c34");
+    const mx = (w.D[0] + w.C[0]) / 2;
+    const my = (w.D[1] + w.C[1]) / 2;
+    const flick = f.motion ? 0.8 + 0.2 * Math.sin(f.t * 2.3) : 1;
+    p.rect(Math.round(mx) - 5, Math.round(my) - 12, 10, 10, hex(255 * flick, 95 * flick, 162 * flick), 0.9);
+    for (let k = 0; k < 4; k++) p.rect(Math.round(mx) - 5, Math.round(my) - 12 + k * 3, 10, 1, "#1a1920", 0.5);
+    // windows along the right face
+    for (let k = 0; k < 3; k++) {
+      const u = (k + 0.7) / 3.4;
+      const wx = w.B[0] + (w.C[0] - w.B[0]) * u;
+      const wy = w.B[1] + (w.C[1] - w.B[1]) * u;
+      p.rect(Math.round(wx) - 1, Math.round(wy) - 18, 3, 4, (k + Math.floor(f.t / 3)) % 3 ? "#ffd68c" : "#2a2830");
+    }
+  }
   // Dumpsters and crates, clear of venues and the plaza.
   for (let k = 0; k < 18; k++) {
     const x = 0.8 + R() * (N - 2);
@@ -63,10 +113,15 @@ export function createScenery(): ZoneScenery {
     if (nearSlot(x, y, 6) || (x < 7.5 && y < 14.5)) continue;
     const big = R() < 0.4;
     const color = big ? ["#2e5a4c", "#3b6e5e", "#244a3e"] : ["#6a5238", "#7d6242", "#584430"];
-    props.push({ depth: x + y, draw: (p) => void box(p, iso, x, y, big ? 1 : 0.5, big ? 0.6 : 0.5, big ? 7 : 4, color[0]!, color[1]!, color[2]!) });
+    const [w, d] = big ? [1, 0.6] : [0.5, 0.5];
+    const proc = (p: Painter) => void box(p, iso, x, y, w, d, big ? 7 : 4, color[0]!, color[1]!, color[2]!);
+    props.push({ depth: x + y, draw: (p) => void spriteAt(p, big ? "dumpster" : "crate", x + w / 2, y + d / 2, proc) });
   }
   // Parked van.
-  props.push({ depth: 16 + 4.5, draw: (p) => void box(p, iso, 16, 4.5, 1.8, 0.9, 9, "#c9c4b8", "#e0dbd0", "#a8a398") });
+  props.push({
+    depth: 16 + 4.5,
+    draw: (p) => void spriteAt(p, "van", 16 + 1.8 / 2, 4.5 + 0.9 / 2, (p) => void box(p, iso, 16, 4.5, 1.8, 0.9, 9, "#c9c4b8", "#e0dbd0", "#a8a398")),
+  });
   // Street lamps.
   const LAMPS: [number, number][] = [[6.8, 8.4], [6.8, 13.6], [16, 3.8], [30.4, 18], [2.4, 29.4], [19.5, 30.4], [30.5, 30.3], [12, 17]];
   for (const [x, y] of LAMPS) props.push({ depth: x + y, draw: (p, f) => lamp(p, x, y, f) });

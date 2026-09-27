@@ -20,7 +20,7 @@
   - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
   - **Zone travel:** your own avatar changing zones while you follow it plays walk-off → world-map hop → title card → walk-in (~2.5 s). Otherwise you get a toast with a Follow button. Reduced motion gets a crossfade and the title card. The world map is a reusable component for Phase 2.
   - **Ambient locals:** 6 per zone at listener brightness, placed where the eye goes (forge door, plaza, near venues), and several of them walk loops. A test proves all 6 are in the default desktop camera view (at least 4 on a phone). They thin out as real people arrive and are never counted.
-  - **Forge sprites (live on `main`):** zones can draw pre-rendered sprites through `Painter.sprite` with a procedural fallback. The Forge draws five dimetric sprites: building, brazier, anvil, barrel, toolrack. The stand-alone chimney was removed from the zone on 2026-09-27; its art files are kept but not loaded. See [docs/SPRITES.md](docs/SPRITES.md).
+  - **Forge sprites (live on `main`):** zones can draw pre-rendered sprites through `Painter.sprite` with a procedural fallback. The Forge draws five dimetric sprites: building, brazier, anvil, barrel, toolrack. The stand-alone chimney was removed from the zone on 2026-09-27; its art files are kept but not loaded. The Lot (indie) draws five more (2026-09-27): warehouse, lamp, dumpster, crate, van, with lamp and door glows still procedural. See [docs/SPRITES.md](docs/SPRITES.md).
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
@@ -106,7 +106,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
 - **Gate measurement:** `supabase/migrations/20260926150000_phase1_gate.sql` (`listening_days`, `world_visits`, `record_world_visit()`, `private.phase1_gate`).
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
-- **Sprites:** `packages/core/src/sprites.ts` (types, `drawSprite`, registry), `apps/web/lib/world/sprite-loader.ts`, `Painter.sprite` in `painters.ts`/`canvas-painter.ts`, art in `apps/web/public/sprites/<zone>/`. Guide and art requirements: [docs/SPRITES.md](docs/SPRITES.md). Metal wiring tests: `zones/metal/sprites.test.ts`.
+- **Sprites:** `packages/core/src/sprites.ts` (types, `drawSprite`, registry), `apps/web/lib/world/sprite-loader.ts`, `Painter.sprite` in `painters.ts`/`canvas-painter.ts`, art in `apps/web/public/sprites/<zone>/`. Guide and art requirements: [docs/SPRITES.md](docs/SPRITES.md). Wiring tests: `zones/metal/sprites.test.ts`, `zones/indie/sprites.test.ts`.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
 ## The Graveyard

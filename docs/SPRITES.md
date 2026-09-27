@@ -51,11 +51,27 @@ person is about 12 px tall, and the procedural Forge building is 56 px wide and 
 
 ### Forge set status (2026-09-27)
 
-All six sheets are enabled and all were rendered through the Blender pixel pipeline
+All six sheets were rendered through the Blender pixel pipeline
 (`C:\Umbrella\_assets\_pipeline\`: orthographic camera at 26.565° elevation and 45° azimuth, 10.6 px
 per metre, 8× supersample, box downscale, hard alpha, ≤12 colours), with anchors set to the projected
 ground point. Props are true scale: `brazier` (9×13), `anvil` (8×11), `barrel` (8×12), `toolrack` (12×15).
 `forge` (56×48) is the Mixar model scaled 2.2× to fill its 4×3-tile footprint, anchored on the
 footprint centre (`FORGE_AT` = 3, 4.5). `chimney` (16×60, a purpose-built 1.2 m × 5.6 m stack) is **retired**:
 its PNG and manifest stay in `public/sprites/metal/`, but it's not in `SPRITES`, so the zone neither loads nor
-draws it (a test guards this). The building keeps its own roof chimney and smoke.
+draws it (a test guards this). The building keeps its own roof chimney and smoke. Five sheets are enabled.
+
+### The Lot set status (2026-09-27)
+
+`zones/indie` draws five sheets from `public/sprites/indie/`: `warehouse` (58×55, anchored on its 4.2×3
+footprint centre, `WAREHOUSE_AT` = 3.1, 4.5), `lamp` (7×20, placed 8×), `dumpster` (12×12) and `crate` (8×8)
+(18 seeded scatter spots, same RNG order as the procedural boxes), and `van` (27×20). Every sprite anchors on
+its footprint centre, and all depths are unchanged. They were rendered with the pipeline's **fixed colour
+path** (Standard view transform, correct sRGB→linear hex conversion, unit-strength emission) and
+**face-tone mode**: each material gets the zone's three `box()` tones by face orientation (top / camera-left
+/ camera-right) instead of lighting, then snaps to `lot_palette.json`. `check_palette.py` fails any sprite
+missing its tones. The Forge set predates both fixes (its colours are what the old AgX path produced).
+
+Glows stay procedural and are positioned from pixel offsets in `scenery.ts`: `LAMP_HEAD` (lit head, lamp.png
+(1, 2) minus anchor) and `WAREHOUSE_DOOR` (roll-up door bottom-centre, warehouse.png (17, 48) minus
+anchor). Re-rendered art must update those offsets. The freight train, puddles and rails stay procedural.
+Tests: `zones/indie/sprites.test.ts`.
