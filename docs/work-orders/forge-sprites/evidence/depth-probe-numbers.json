@@ -1,0 +1,150 @@
+{
+  "after (forge+chimney sprites, depth 7.9)": [
+    {
+      "name": "behind-building",
+      "x": 3,
+      "y": 2.4,
+      "depth": 5.4,
+      "visible_px": 0
+    },
+    {
+      "name": "behind-chimney",
+      "x": 4.8,
+      "y": 2,
+      "depth": 6.8,
+      "visible_px": 0
+    },
+    {
+      "name": "front-of-chimney-base",
+      "x": 5.6,
+      "y": 3,
+      "depth": 8.6,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-door",
+      "x": 3,
+      "y": 6.8,
+      "depth": 9.8,
+      "visible_px": 48
+    },
+    {
+      "name": "open-ground-control",
+      "x": 10,
+      "y": 3,
+      "depth": 13,
+      "visible_px": 48
+    }
+  ],
+  "fallback (sprites blocked, depth 7.9)": [
+    {
+      "name": "behind-building",
+      "x": 3,
+      "y": 2.4,
+      "depth": 5.4,
+      "visible_px": 0
+    },
+    {
+      "name": "behind-chimney",
+      "x": 4.8,
+      "y": 2,
+      "depth": 6.8,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-chimney-base",
+      "x": 5.6,
+      "y": 3,
+      "depth": 8.6,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-door",
+      "x": 3,
+      "y": 6.8,
+      "depth": 9.8,
+      "visible_px": 48
+    },
+    {
+      "name": "open-ground-control",
+      "x": 10,
+      "y": 3,
+      "depth": 13,
+      "visible_px": 48
+    }
+  ],
+  "control: sprites, depth 12": [
+    {
+      "name": "behind-building",
+      "x": 3,
+      "y": 2.4,
+      "depth": 5.4,
+      "visible_px": 0
+    },
+    {
+      "name": "behind-chimney",
+      "x": 4.8,
+      "y": 2,
+      "depth": 6.8,
+      "visible_px": 0
+    },
+    {
+      "name": "front-of-chimney-base",
+      "x": 5.6,
+      "y": 3,
+      "depth": 8.6,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-door",
+      "x": 3,
+      "y": 6.8,
+      "depth": 9.8,
+      "visible_px": 0
+    },
+    {
+      "name": "open-ground-control",
+      "x": 10,
+      "y": 3,
+      "depth": 13,
+      "visible_px": 48
+    }
+  ],
+  "control: fallback, depth 12": [
+    {
+      "name": "behind-building",
+      "x": 3,
+      "y": 2.4,
+      "depth": 5.4,
+      "visible_px": 0
+    },
+    {
+      "name": "behind-chimney",
+      "x": 4.8,
+      "y": 2,
+      "depth": 6.8,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-chimney-base",
+      "x": 5.6,
+      "y": 3,
+      "depth": 8.6,
+      "visible_px": 48
+    },
+    {
+      "name": "front-of-door",
+      "x": 3,
+      "y": 6.8,
+      "depth": 9.8,
+      "visible_px": 28
+    },
+    {
+      "name": "open-ground-control",
+      "x": 10,
+      "y": 3,
+      "depth": 13,
+      "visible_px": 48
+    }
+  ]
+}

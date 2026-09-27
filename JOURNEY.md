@@ -20,6 +20,7 @@
   - **URLs:** zones live at `earshot.world/<zone id>`; `/z/<zone>` 308-redirects there.
   - **Zone travel:** your own avatar changing zones while you follow it plays walk-off → world-map hop → title card → walk-in (~2.5 s). Otherwise you get a toast with a Follow button. Reduced motion gets a crossfade and the title card. The world map is a reusable component for Phase 2.
   - **Ambient locals:** 6 per zone at listener brightness, placed where the eye goes (forge door, plaza, near venues), and several of them walk loops. A test proves all 6 are in the default desktop camera view (at least 4 on a phone). They thin out as real people arrive and are never counted.
+  - **Forge sprites (branch `feat/forge-sprites`, not merged or live):** zones can draw pre-rendered sprites through `Painter.sprite` with a procedural fallback. The Forge uses the building and chimney sprites. Brazier, anvil, barrel and toolrack are wired but disabled until they're re-rendered at game scale. See [docs/SPRITES.md](docs/SPRITES.md).
 - **Next:** Step 9: invite 10 friends. Phase 2 gate: 10 connected and coming back on their own. Optionally raise Auth → Rate Limits → emails/hour from 30 in the dashboard.
 - **Biggest open question:** None blocking.
 
@@ -76,6 +77,9 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 | 2026-09-26 | Ambient locals are zone scenery (`ZonePlugin.locals`, drawn by the renderer), never part of a Scene, presence, venues, tiers or counts, and never stored. Muted palette, no tag or ring; a tap says only "Local · lives here". Density 6 → 2 at 10 people → 0 at 50. | Empty zones shouldn't feel dead, but listeners must never be faked |
 | 2026-09-26 | Locals v2: listener-brightness clothes (chest print = shirt, so no accent), identity from props and activity (smith hammering the anvil with sparks, walkers on `loopAt` paths). Placement is tested against the real camera (`lib/world/camera.ts`, shared with the renderer) and against every crowd a local can coexist with (the first two survive a 49-person amphitheater). | Jeff: v1 read as scenery; "muted" came from colour, which hid them. The name tag, ring and count still set listeners apart. |
 | 2026-09-26 | Supabase SMTP lives in the dashboard, not `config.toml`; `supabase config push` is safe for templates (the diff skips SMTP) but can't set `rate_limit.email_sent` | Keeps the Resend key out of the repo and the CLI |
+| 2026-09-26 | Sprites: core owns the sheet registry (`registerSheet`/`getSheet`); the app loads the sheets a zone lists in `ZonePlugin.sprites` and registers them; zones draw with `drawSprite(..., fallback)` | Keeps the dependency direction app → zone → core; zones stay Deno-importable. A sheet that fails to load just leaves the procedural art. |
+| 2026-09-26 | The Forge building's draw depth is 7.9, not 12 | A single depth can't sort a 4×3 footprint perfectly, but 7.9 is correct everywhere except slivers at two corners. At 12, anyone in the door yard was painted behind the building (measured: a walker at the door was 28/48 px visible on procedural art and 0/48 on the sprite). |
+| 2026-09-26 | Only sprites that read correctly at game scale are enabled (`ENABLED_SPRITES`) | The first Forge sheets were all normalized to 64 px tall. A 64 px brazier stands five times a person's height. |
 
 ## System Map
 
@@ -102,6 +106,7 @@ Phase 0 was a single-file HTML prototype of the Metal zone ("the Forge"): a simu
 - **Zones:** `zones/{metal,indie,folk,outskirts}` are all full plug-ins (`claims.ts`, `layout.ts`, `scenery.ts`, `venues.ts`, `index.ts` → `createZone()`). The contract test is `zones/zones.test.ts`. Sim artists per zone are in `apps/web/lib/world/sim-artists.ts`.
 - **Gate measurement:** `supabase/migrations/20260926150000_phase1_gate.sql` (`listening_days`, `world_visits`, `record_world_visit()`, `private.phase1_gate`).
 - **Supabase:** project `uekzfcdfykwpvxwattsi` (BetterBody org, us-east-1). `supabase/migrations/`, pushed with `supabase db push`. `config.toml` auth section mirrors remote; only site_url and redirect URLs were changed.
+- **Sprites:** `packages/core/src/sprites.ts` (types, `drawSprite`, registry), `apps/web/lib/world/sprite-loader.ts`, `Painter.sprite` in `painters.ts`/`canvas-painter.ts`, art in `apps/web/public/sprites/<zone>/`. Guide and art requirements: [docs/SPRITES.md](docs/SPRITES.md). Metal wiring tests: `zones/metal/sprites.test.ts`.
 - **Tests:** root `vitest.config.ts`, run with `pnpm test`.
 
 ## The Graveyard
@@ -113,6 +118,12 @@ _(nothing yet)_
 _(none; the realtime-channel and layout-location questions were settled in step 7, and email is decided)_
 
 ## Session Log
+
+### 2026-09-26 — Forge sprites (branch, not merged)
+**Did:** Wired pre-rendered sprites per zaino's work order (`docs/work-orders/forge-sprites/`): optional `Painter.sprite`, core `drawSprite` + sheet registry, `ZonePlugin.sprites`, a web loader (fetch → `createImageBitmap` → Pixi `ImageSource`, never throws), `PixiPainter.sprite` via `Graphics.texture` (explicit fill alpha), `canvasPainter.sprite`, and `faded()` forwarding. The 12 art files went to `apps/web/public/sprites/metal/`, and all six props are wired in the Forge. Measured the art: every sheet is 64 px tall, and the forge and chimney are rendered front-on, so only those two are enabled. The building's depth went from 12 to 7.9 after a probe walker showed the door yard being painted behind it. Also: the proxy skips `/sprites/`, and `sprites` is a reserved path. Evidence (before/after, fallback, depth probe) is in `docs/work-orders/forge-sprites/evidence/`. 179 tests; typecheck and build clean. Not pushed or deployed.
+**Gotchas:** `Graphics.texture()` takes its alpha from the last `fill()`. `next dev` writes untracked `apps/web/AGENTS.md` and `CLAUDE.md`, so delete them. `favicon.ico` 404s on main (no favicon yet). Chrome logs one console line per blocked request even when the app handles the failure.
+**State after:** The branch is ready for zaino's review. The Forge shows the sprite building and chimney; the rest is procedural.
+**Next:** Re-render the brazier, anvil, barrel and toolrack at game scale (ideally the forge and chimney at 45° too), then add them to `ENABLED_SPRITES`.
 
 ### 2026-09-26 — Locals tuning (visible, active, placed)
 **Did:** Jeff found v1 locals too subtle (2–3 visible in the Forge, reading as scenery). Rewrote all four zones' locals: 6 each, listener brightness, placed around the landmark building, plaza and venues rather than edges. Forge: the blacksmith hammers the anvil (moved by the door) with sparks, the brazier tender walks between braziers, and an apprentice, a coal hauler and a pacer walk short loops. Other zones have similar casts (campfire stoker, woodchopper, lantern-lighter; crate-digger, skateboarder, dog-walker; trucker, sweeper, stray dog…). Added `camera.ts`, `loopAt`, a viewport test and a crowd-clearance test (both failed on the v1 placements first). Screenshots of each zone at 0–1 listeners sent to Jeff. 161 tests; typecheck and build clean.
@@ -134,12 +145,6 @@ Then ambient locals: 4–6 per zone, client-side only, density from `localsToSho
 Jeff confirmed the email landed in the inbox and the link works; the alias account is deleted. Then gate measurement: `listening_days` + `world_visits` (server-only), `record_world_visit()` called from the zone page, and the `private.phase1_gate` view. The RLS smoke test covers them; verified in prod with a throwaway user, since deleted. Jeff's own row already shows today's listening and visit.
 **State after:** Ready for step 9.
 **Next:** Step 9 invites.
-
-### 2026-09-26 — Song key fix + step 8 (three new zones)
-**Did:** `songKey()` for stage grouping (18 variant tests), poller redeployed. Built The Lot, The Hollow and The Outskirts as full plug-ins with placeholder art; the client registry has all four zones; per-zone sim artists; a zone contract test. Checked each zone in the browser with a sim crowd and fixed two art problems (lamp light cones read as grey pyramids; drive-in screens weren't in perspective). Poller redeployed with the final layouts. 113 tests.
-**Gotchas:** A Python heredoc turned the regex word boundary (backslash-b) into a literal backspace in one regex; tests caught it. Scanned all tracked files afterwards: no other control characters. Use raw strings for regex edits.
-**State after:** All four zones render at `/z/<zone>`, live and `?sim=N`.
-**Next:** Resend setup, then step 9 invites.
 
 > Older sessions archived in [JOURNEY_ARCHIVE.md](JOURNEY_ARCHIVE.md).
 

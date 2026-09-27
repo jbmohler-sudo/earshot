@@ -1,0 +1,5 @@
+[console.error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[sprite] 200 http://localhost:3100/sprites/metal/forge.json
+[sprite] 200 http://localhost:3100/sprites/metal/chimney.json
+[sprite] 200 http://localhost:3100/sprites/metal/forge.png
+[sprite] 200 http://localhost:3100/sprites/metal/chimney.png

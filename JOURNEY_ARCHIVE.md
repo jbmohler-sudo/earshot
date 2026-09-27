@@ -2,6 +2,12 @@
 
 > Older Session Log entries, newest first. Live story: [JOURNEY.md](JOURNEY.md).
 
+### 2026-09-26 — Song key fix + step 8 (three new zones)
+**Did:** `songKey()` for stage grouping (18 variant tests), poller redeployed. Built The Lot, The Hollow and The Outskirts as full plug-ins with placeholder art; the client registry has all four zones; per-zone sim artists; a zone contract test. Checked each zone in the browser with a sim crowd and fixed two art problems (lamp light cones read as grey pyramids; drive-in screens weren't in perspective). Poller redeployed with the final layouts. 113 tests.
+**Gotchas:** A Python heredoc turned the regex word boundary (backslash-b) into a literal backspace in one regex; tests caught it. Scanned all tracked files afterwards: no other control characters. Use raw strings for regex edits.
+**State after:** All four zones render at `/z/<zone>`, live and `?sim=N`.
+**Next:** Resend setup, then step 9 invites.
+
 ### 2026-09-26 — Step 7: server-side layout, realtime presence, navigation
 **Did:** World snapshots (`toJSON`/`fromJSON`) and `syncPresence` in core; migration (presence slot, spot_index and display fields; `engagements.artist_key`; `zone_state`); poller runs the layout after every cycle; provisional layouts for the other three zones. Client: Scene model, renderer animates server layout, Realtime feed per zone, follows you on arrival. Navigation: `/world`, logo links, "Enter the world", "You". 75 tests. Live e2e passed: layout within one tick, realtime arrival on an open page, hide → presence gone in 464 ms and the avatar gone from the page within ~2 s, hidden listener stays out.
 **Decided:** See the Decisions Log rows dated 2026-09-26.
